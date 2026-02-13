@@ -38,8 +38,8 @@ self.addEventListener('fetch', (event) => {
   const { request } = event
   const url = new URL(request.url)
 
-  // Skip API calls to backend - let them fail gracefully
-  if (url.pathname.includes('/api/')) {
+  // Skip API calls and extension schemes
+  if (url.pathname.includes('/api/') || url.protocol === 'chrome-extension:') {
     event.respondWith(
       fetch(request).catch(() => {
         return new Response(
