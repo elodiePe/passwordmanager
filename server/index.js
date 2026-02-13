@@ -8,7 +8,7 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: ['http://localhost:5173', 'https://YOUR_USERNAME.github.io'],
+  origin: ['http://localhost:5173', 'https://elodiepe.github.io'],
   credentials: true
 }));
 
