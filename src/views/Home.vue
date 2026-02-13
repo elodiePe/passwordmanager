@@ -20,6 +20,7 @@ import SearchBar from '../components/search-bar.vue';
 
 const data = ref([]);
 const searchQuery = ref('');
+const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const uniqueWebsites = computed(() => {
   const websites = new Map();
@@ -45,7 +46,7 @@ const handleSearch = (query) => {
 };
 
 onMounted(async () => {
-  const res = await fetch('http://localhost:5000/api/passwords');
+  const res = await fetch(`${apiBase}/api/passwords`);
   data.value = await res.json();
 });
 </script>
