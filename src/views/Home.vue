@@ -20,7 +20,7 @@ import SearchBar from '../components/search-bar.vue';
 
 const data = ref([]);
 const searchQuery = ref('');
-const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/+$/, '');
 
 const uniqueWebsites = computed(() => {
   const websites = new Map();

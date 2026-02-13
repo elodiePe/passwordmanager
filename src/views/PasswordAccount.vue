@@ -13,7 +13,7 @@ import AccountInfoCard from '@/components/account-info-card.vue';
 
 const route = useRoute();
 const account = ref(null);
-const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/+$/, '');
 
 onMounted(async () => {
   const website = route.params.website;

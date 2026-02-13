@@ -45,7 +45,7 @@ const iconPreview = ref("");
 const loading = ref(false);
 const error = ref("");
 const success = ref(false);
-const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/+$/, '');
 
 const websiteName = computed(() => {
   try {
