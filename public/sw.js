@@ -1,4 +1,4 @@
-const CACHE_NAME = 'passwordmanager-v1'
+const CACHE_NAME = 'passwordmanager-v2'
 const urlsToCache = [
   '/passwordmanager/',
   '/passwordmanager/index.html',
@@ -47,6 +47,26 @@ self.addEventListener('fetch', (event) => {
           { headers: { 'Content-Type': 'application/json' } }
         )
       })
+    )
+    return
+  }
+
+  // Network-first for HTML navigation to avoid stale asset links
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const responseToCache = response.clone()
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put('/passwordmanager/index.html', responseToCache)
+            })
+          }
+          return response
+        })
+        .catch(() => {
+          return caches.match('/passwordmanager/index.html')
+        })
     )
     return
   }
