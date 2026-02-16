@@ -100,6 +100,46 @@ app.post("/api/passwords", async (req, res) => {
   }
 });
 
+app.put("/api/passwords/:website/:accountId", async (req, res) => {
+  try {
+    const updates = {
+      username: req.body.username,
+      password: req.body.password
+    };
+
+    const updated = await Password.findOneAndUpdate(
+      { _id: req.params.accountId, website: req.params.website },
+      { $set: updates },
+      { new: true, runValidators: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+
+    res.json(updated);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.delete("/api/passwords/:website/:accountId", async (req, res) => {
+  try {
+    const deleted = await Password.findOneAndDelete({
+      _id: req.params.accountId,
+      website: req.params.website
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+
+    res.status(204).send();
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     app.listen(process.env.PORT, () =>

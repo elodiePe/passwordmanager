@@ -12,14 +12,18 @@
       <div class="account-info">
         <p class="account-name">{{ isPasswordVisible ? password : '••••••••' }}</p>
       </div>
-      <button @click="togglePasswordVisibility" class="icon-btn">
-        <span class="material-symbols-rounded">
+
+        <div class="password-section">
+                <button @click="togglePasswordVisibility" class="icon-btn">
+             <span class="material-symbols-rounded">
           {{ isPasswordVisible ? 'visibility_off' : 'visibility' }}
         </span>
       </button>
       <button @click="copyToClipboard(password)" class="icon-btn">
         <span class="material-symbols-rounded">content_copy</span>
       </button>
+        </div>
+     
     </div>
   </div>
 </template>
@@ -58,6 +62,7 @@ const copyToClipboard = (text) => {
   background: #fef0f0;
   border-radius: 8px;
   box-shadow: 0 5px 6px 0 rgba(0, 0, 0, 0.25);
+  margin-bottom: 2rem;
 }
 
 .username-part,
@@ -67,7 +72,10 @@ const copyToClipboard = (text) => {
   align-items: center;
   gap: 0.5rem;
 }
-
+.password-section {
+  display: flex;
+  gap: 0.5rem;
+}
 .account-info {
   display: flex;
   padding-left: 0.4rem;

@@ -11,6 +11,10 @@
           />
         </div>
     </div>
+       <router-link to="/newpassword" class="add-btn">
+      <span class="material-symbols-rounded">add_2</span>
+      New password
+    </router-link>
 </template>
 
 <script setup>
@@ -57,5 +61,26 @@ onMounted(async () => {
     flex-direction: column;
     gap: 0.75rem;
     margin-top: 1rem;
+}
+.add-btn {
+display: flex;
+padding: 0.625rem;
+justify-content: center;
+align-items: center;
+gap: 0.625rem;
+position: fixed;
+right: 1rem;
+bottom: 12.875rem;
+  border-radius: 12px;
+background: #1D3353;
+box-shadow: 5px 10px 10px 0 rgba(0, 0, 0, 0.25);
+color: #FFF;
+text-align: center;
+font-family: Inter;
+font-size: 0.9375rem;
+font-style: normal;
+font-weight: 400;
+line-height: normal;
+text-decoration: none;
 }
 </style>

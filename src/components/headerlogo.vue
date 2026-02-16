@@ -13,9 +13,15 @@
   padding: 1rem;
   justify-content: flex-start;
   align-items: center;
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
   background: var(--Bg, #FEF0F0);
   box-sizing: border-box;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 80px;
+  
 }
 
 .navigation img {

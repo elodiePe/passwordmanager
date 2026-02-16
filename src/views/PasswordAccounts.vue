@@ -6,7 +6,11 @@
       </router-link>
       <div class="header-info">
         <img v-if="accounts[0]?.iconUrl" :src="accounts[0].iconUrl" alt="icon" class="website-icon" />
-        <h1>{{ websiteName }}</h1>
+        <div class="info_website">
+       <h1>{{ websiteName }}</h1>
+       <p>{{ accounts[0]?.websiteUrl|| 'No URL' }}</p>
+        </div>
+ 
       </div>
     </header>
 
@@ -21,8 +25,8 @@
     </section>
 
     <router-link to="/newpassword" class="add-btn">
-      <span class="material-symbols-rounded">add</span>
-      Add Another Account
+      <span class="material-symbols-rounded">add_2</span>
+      New password
     </router-link>
   </main>
 </template>
@@ -52,16 +56,30 @@ const togglePassword = (id) => {
 
 <style scoped>
 .password-accounts {
-  padding: 1rem;
+  padding: 0;
 }
-
 header {
   display: flex;
   align-items: center;
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
-
+.info_website {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  font-family: Inter;
+}
+.info_website p {
+  font-size: 0.875rem;
+  color: #666;
+margin: 0;
+}
+.info_website h1 {
+  font-size: 1.5rem;
+  margin: 0;
+}
 .back-btn {
   text-decoration: none;
   color: #333;
@@ -87,14 +105,29 @@ header {
 }
 
 .add-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
-  background: #007bff;
-  color: white;
-  text-decoration: none;
-  border-radius: 8px;
-  font-weight: 500;
+display: flex;
+padding: 0.625rem;
+justify-content: center;
+align-items: center;
+gap: 0.625rem;
+position: fixed;
+right: 1rem;
+bottom: 12.875rem;
+  border-radius: 12px;
+background: #1D3353;
+box-shadow: 5px 10px 10px 0 rgba(0, 0, 0, 0.25);
+color: #FFF;
+text-align: center;
+font-family: Inter;
+font-size: 0.9375rem;
+font-style: normal;
+font-weight: 400;
+line-height: normal;
+text-decoration: none;
+}
+.material-symbols-rounded {
+width: 1.375rem;
+height: 1.375rem;
+aspect-ratio: 1/1;
 }
 </style>

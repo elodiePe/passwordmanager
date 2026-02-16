@@ -24,14 +24,17 @@ body {
 }
 
 .main-content {
+  padding-top: 5.75rem;
+  margin-top : 5.75rem;
+  max-width: 5.75rem;
   padding: 1rem;
-  padding-bottom: 6rem;
   max-width: 100%;
   box-sizing: border-box;
 }
 
 @media (max-width: 480px) {
   .main-content {
+    padding-top: 5.25rem;
     padding: 0.75rem;
     padding-bottom: 6rem;
   }

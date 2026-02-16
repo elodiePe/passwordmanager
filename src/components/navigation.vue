@@ -24,6 +24,9 @@ import { useRoute } from 'vue-router'
 const route = useRoute()
 
 const isActive = (path) => {
+  if (path === '/') {
+    return route.path === '/' || route.path.startsWith('/passwords/')
+  }
   return route.path === path
 }
 
@@ -75,12 +78,15 @@ const isActive = (path) => {
   padding: 0.625rem 1rem;
   text-decoration: none;
   color: #333;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  /* transition: all 0.3s ease; */
   border-radius: 0.3125rem;
   height: 100%;
   width: 100%;
-  font-size: 0.875rem;
+font-family: Inter;
+font-size: 0.75rem;
+font-style: normal;
+font-weight: 700;
+line-height: normal;
 }
 
 .material-symbols-rounded {
