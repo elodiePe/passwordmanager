@@ -23,8 +23,9 @@
         <span class="material-symbols-rounded">content_copy</span>
       </button>
         </div>
-     
+    
     </div>
+
   </div>
 </template>
 
@@ -42,14 +43,21 @@ const props = defineProps({
   }
 });
 
+const emit = defineEmits(['copied']);
+
 const isPasswordVisible = ref(false);
 
 const togglePasswordVisibility = () => {
   isPasswordVisible.value = !isPasswordVisible.value;
 };
 
-const copyToClipboard = (text) => {
-  navigator.clipboard.writeText(text);
+const copyToClipboard = async (text) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    emit('copied');
+  } catch (error) {
+    console.error('Failed to copy text:', error);
+  }
 };
 </script>
 

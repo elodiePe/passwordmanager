@@ -1,6 +1,7 @@
 <template>
 <div class="navigation">
     <img src="../assets/logo.svg" alt="Logo">
+
 </div>
     </template> 
 <script setup>

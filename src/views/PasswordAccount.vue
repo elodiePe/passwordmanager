@@ -20,10 +20,16 @@
       </div>
     </div>
   </header>
+  <p v-if="isLoading">Loading account...</p>
+  <p v-else-if="loadError" class="form-error">{{ loadError }}</p>
+
+  <div v-else class="copied-message" v-show="showCopiedMessage">Copied to clipboard!</div>
+
   <AccountInfoCard
     v-if="account && !isEditing"
     :account_name="account.username"
     :password="account.password"
+    @copied="handleCopied"
   />
 
   <form v-if="account && isEditing" class="edit-form" @submit.prevent="saveAccount">
@@ -49,14 +55,14 @@
   <div class="action-buttons" v-if="account && !isEditing">
     <button @click="editAccount" class="btn btn-edit">
       <!-- <span class="material-symbols-rounded">edit</span> -->
-       Edit
+      Edit
     </button>
     <button @click="deleteAccount" class="btn btn-delete">Delete</button>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AccountInfoCard from '@/components/account-info-card.vue'
 
@@ -70,15 +76,48 @@ const formUsername = ref('')
 const formPassword = ref('')
 const formError = ref('')
 
+const showCopiedMessage = ref(false)
+let copiedTimer = null
+const isLoading = ref(true)
+const loadError = ref('')
+
+const handleCopied = () => {
+  showCopiedMessage.value = true
+  if (copiedTimer) clearTimeout(copiedTimer)
+  copiedTimer = setTimeout(() => {
+    showCopiedMessage.value = false
+  }, 2000)
+}
+
+onUnmounted(() => {
+  if (copiedTimer) clearTimeout(copiedTimer)
+})
+
 onMounted(async () => {
-  const website = route.params.website
-  const accountName = route.params.accountId // from router path
-  const res = await fetch(`${apiBase}/api/passwords/${website}/${accountName}`)
-  const data = await res.json()
-  account.value = Array.isArray(data) ? data[0] : null
-  if (account.value) {
-    formUsername.value = account.value.username
-    formPassword.value = account.value.password
+  isLoading.value = true
+  loadError.value = ''
+
+  try {
+    const website = route.params.website
+    const accountParam = route.params.accountId || route.params.accountName
+
+    const res = await fetch(`${apiBase}/api/passwords/${website}/${accountParam}`)
+    if (!res.ok) throw new Error('Failed to load account')
+
+    const data = await res.json()
+
+    // Accept both API shapes: array or object
+    account.value = Array.isArray(data) ? data[0] || null : data || null
+
+    if (!account.value) throw new Error('Account not found')
+
+    formUsername.value = account.value.username || ''
+    formPassword.value = account.value.password || ''
+  } catch (error) {
+    loadError.value = error.message || 'Failed to load account'
+    account.value = null
+  } finally {
+    isLoading.value = false
   }
 })
 
@@ -275,5 +314,14 @@ a {
 .form-error {
   color: #b00020;
   margin: 0;
+}
+
+.copied-message {
+  margin: 0.5rem 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: #e8f3ff;
+  color: #1d3353;
+  font-size: 0.9rem;
 }
 </style>
