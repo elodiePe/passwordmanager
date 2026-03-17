@@ -10,6 +10,7 @@
 </template>
 
 <script>
+import '../assets/colors.css';
 export default {
   props: {
     title: {
@@ -35,14 +36,14 @@ export default {
   align-items: center;
   gap: 0.5rem;
   border-radius: 0.3125rem;
-  background:  #fef0f0;
+  background:  var(--color-card-password);
   box-shadow: 0 5px 6px 0 rgba(0, 0, 0, 0.25);
   justify-content: space-between;
   text-decoration: none;
 }
-/* .password-card:hover {
-transform: translateY(-4px);
-} */
+.password-card:hover {
+  background: var(--color-card-hovered);
+}
 .img-title {
   display: flex;
   align-items: center;
@@ -65,7 +66,7 @@ transform: translateY(-4px);
   align-items: center;
   gap: 0.625rem;
   flex-shrink: 0;
-  color: #2b2b2b;
+  color: var(--color-text-primary);
   font-family: Inter;
   font-size: 0.9375rem;
   font-style:normal;
@@ -76,6 +77,6 @@ transform: translateY(-4px);
   width: 1.5rem;
   height: 1.5rem;
   justify-content: center;
-  color: #2b2b2b;
+  color: var(--color-text-primary);
 }
 </style>

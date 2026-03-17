@@ -30,13 +30,15 @@ export default {
   padding: 0.5rem;
   background: #fff;
   border-radius: 8px;
-    background:  #fef0f0;
+    background:  var(--color-card-password);
 
   box-shadow: 0 5px 6px 0 rgba(0, 0, 0, 0.25);
   text-decoration: none;
   color: inherit;
 }
-
+.account-card:hover {
+  background: var(--color-card-hovered);
+}
 .account-info {
  display: flex;
   /* width: 14.5625rem; */

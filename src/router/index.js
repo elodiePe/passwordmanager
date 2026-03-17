@@ -1,9 +1,10 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import Home from '../views/Home.vue'
 import Settings from '../views/Settings.vue'
-import NewPassword from "../views/NewPassword.vue";
-import PasswordAccounts from '../views/PasswordAccounts.vue';
-import PasswordAccount from '../views/PasswordAccount.vue';
+import NewPassword from '../views/NewPassword.vue'
+import PasswordAccounts from '../views/PasswordAccounts.vue'
+import PasswordAccount from '../views/PasswordAccount.vue'
+import Admin from '../views/Admin.vue'
 
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -20,20 +21,25 @@ const router = createRouter({
       component: Settings,
     },
     {
-      path: "/newpassword",
-      name: "newpassword",
-      component: NewPassword
+      path: '/admin',
+      name: 'admin',
+      component: Admin,
+    },
+    {
+      path: '/newpassword',
+      name: 'newpassword',
+      component: NewPassword,
     },
     {
       path: '/passwords/:website',
       name: 'password-accounts',
-      component: PasswordAccounts
+      component: PasswordAccounts,
     },
     {
-      path:'/passwords/:website/:accountId',
+      path: '/passwords/:website/:accountId',
       name: 'password-account',
-      component:PasswordAccount
-    }
+      component: PasswordAccount,
+    },
   ],
 })
 

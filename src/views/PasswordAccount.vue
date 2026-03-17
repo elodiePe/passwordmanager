@@ -24,11 +24,34 @@
   <p v-else-if="loadError" class="form-error">{{ loadError }}</p>
 
   <div v-else class="copied-message" v-show="showCopiedMessage">Copied to clipboard!</div>
+  <div class="section-header">
+    <h1 class="accounts-title">Account informations</h1>
+    <div class="action-buttons desktop-actions" v-if="account && !isEditing">
+      <button @click="handleEditAction" class="btn btn-edit">Edit</button>
+      <button @click="handleDeleteAction" class="btn btn-delete">Delete</button>
+    </div>
+
+    <div class="mobile-actions" v-if="account && !isEditing" ref="mobileActionsRef">
+      <button
+        class="menu-trigger"
+        type="button"
+        aria-label="Open account actions"
+        @click="toggleMobileActions"
+      >
+        <span class="material-symbols-rounded">more_vert</span>
+      </button>
+      <div v-if="showMobileActions" class="mobile-menu">
+        <button @click="handleEditAction" class="btn btn-edit" type="button">Edit</button>
+        <button @click="handleDeleteAction" class="btn btn-delete" type="button">Delete</button>
+      </div>
+    </div>
+  </div>
 
   <AccountInfoCard
     v-if="account && !isEditing"
     :account_name="account.username"
     :password="account.password"
+    :require-challenge="requireChallenge"
     @copied="handleCopied"
   />
 
@@ -51,14 +74,6 @@
       </button>
     </div>
   </form>
-
-  <div class="action-buttons" v-if="account && !isEditing">
-    <button @click="editAccount" class="btn btn-edit">
-      <!-- <span class="material-symbols-rounded">edit</span> -->
-      Edit
-    </button>
-    <button @click="deleteAccount" class="btn btn-delete">Delete</button>
-  </div>
 </template>
 
 <script setup>
@@ -75,6 +90,9 @@ const isSaving = ref(false)
 const formUsername = ref('')
 const formPassword = ref('')
 const formError = ref('')
+const showMobileActions = ref(false)
+const mobileActionsRef = ref(null)
+const requireChallenge = ref(true)
 
 const showCopiedMessage = ref(false)
 let copiedTimer = null
@@ -91,9 +109,13 @@ const handleCopied = () => {
 
 onUnmounted(() => {
   if (copiedTimer) clearTimeout(copiedTimer)
+  document.removeEventListener('click', handleDocumentClick)
 })
 
 onMounted(async () => {
+  const managerMode = window.localStorage.getItem('pm.managerMode')
+  requireChallenge.value = managerMode !== 'A'
+
   isLoading.value = true
   loadError.value = ''
 
@@ -119,10 +141,34 @@ onMounted(async () => {
   } finally {
     isLoading.value = false
   }
+
+  document.addEventListener('click', handleDocumentClick)
 })
+
+const handleDocumentClick = (event) => {
+  if (!mobileActionsRef.value) return
+  if (!mobileActionsRef.value.contains(event.target)) {
+    showMobileActions.value = false
+  }
+}
+
+const toggleMobileActions = () => {
+  showMobileActions.value = !showMobileActions.value
+}
+
+const handleEditAction = () => {
+  showMobileActions.value = false
+  editAccount()
+}
+
+const handleDeleteAction = () => {
+  showMobileActions.value = false
+  deleteAccount()
+}
 
 const editAccount = () => {
   formError.value = ''
+  showMobileActions.value = false
   isEditing.value = true
 }
 
@@ -186,7 +232,25 @@ header {
   display: flex;
   align-items: center;
   gap: 1rem;
+  padding-bottom: 0.75rem;
   margin-bottom: 1.5rem;
+  border-bottom: 1px solid #eff1f4;
+}
+.accounts-title {
+  margin: 0;
+  color: #1d3353;
+  font-family: Inter;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 .info_website {
   display: flex;
@@ -276,6 +340,56 @@ a {
   gap: 0.5rem;
 }
 
+.desktop-actions {
+  flex-direction: row;
+  align-items: center;
+}
+
+.desktop-actions .btn {
+  width: auto;
+  min-width: 5.5rem;
+}
+
+.mobile-actions {
+  display: none;
+  position: relative;
+}
+
+.menu-trigger {
+  border: none;
+  border-radius: 10px;
+  background: #ffff;
+  color: #1d3353;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.menu-trigger:hover {
+  background: #f1f4f8;
+}
+
+.mobile-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.4rem);
+  z-index: 10;
+  background: #fff;
+  border: 1px solid #e2dede;
+  border-radius: 10px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+  padding: 0.4rem;
+  min-width: 7rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.mobile-menu .btn {
+  width: 100%;
+}
+
 .btn {
   padding: 0.7rem 1rem;
   border: none;
@@ -297,20 +411,29 @@ a {
 }
 
 .btn-edit {
-  background: #1d3353;
+  background: var(--color-primary);
   color: #fff;
+}
+.btn-edit:hover {
+  background: var(--color-primary-hovered);
 }
 
 .btn-delete {
-  background: #b00020;
+  background: var(--color-danger);
   color: #fff;
 }
-
+.btn-delete:hover {
+  background: var(--color-danger-hovered);
+  color: #fff;
+}
 .btn-cancel {
-  background: #b00020;
+  background: var(--color-danger);
   color: #fff;
 }
-
+.btn-cancel:hover {
+  background: var(--color-danger-hovered);
+  color: #fff;
+}
 .form-error {
   color: #b00020;
   margin: 0;
@@ -323,5 +446,15 @@ a {
   background: #e8f3ff;
   color: #1d3353;
   font-size: 0.9rem;
+}
+
+@media (max-width: 720px) {
+  .desktop-actions {
+    display: none;
+  }
+
+  .mobile-actions {
+    display: block;
+  }
 }
 </style>

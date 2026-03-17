@@ -6,7 +6,7 @@ import SearchBar from './components/search-bar.vue'
 
 <template>
   <HeaderLogo />
-  <Navigation />
+  <!-- <Navigation /> -->
  
   <main class="main-content">
     <router-view />
@@ -21,6 +21,7 @@ import SearchBar from './components/search-bar.vue'
 body {
   margin: 0;
   padding: 0;
+
 }
 
 .main-content {

@@ -5,8 +5,10 @@
 </div>
     </template> 
 <script setup>
+import '../assets/colors.css'
 
 </script>
+
 <style scoped>
 .navigation {
   display: flex;
@@ -17,7 +19,7 @@
   position: fixed;
   top: 0;
   left: 0;
-  background: var(--Bg, #FEF0F0);
+  background: var(--color-surface);
   box-sizing: border-box;
   z-index: 1000;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);

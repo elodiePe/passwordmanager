@@ -1,0 +1,60 @@
+/*
+ * colors.css — central color palette for the Password Manager app
+ *
+ * Usage in any component:
+ *   color: var(--color-primary);
+ *
+ * To restyle the whole app, only edit values here.
+ */
+
+:root {
+  /* ── Brand / Primary ─────────────────────────────────── */
+  --color-primary: #1d3353;; /* nav active, buttons, titles, links    */
+  --color-primary-hovered: #848586; /* nav active hover, button hover       */
+  --color-primary-on: #ffffff; /* text / icons on primary background    */
+
+  /* ── Page & Surface backgrounds ─────────────────────── */
+  --color-bg: #280003; /* app-level background (header, nav)    */
+  --color-surface: #EEE0CB; /* pure white (inputs, challenge box)    */
+  --color-card: #fef0f0; /* account-card & account-info-card      */
+  --color-card-password: #fff5ef; /* password-card background              */
+  --color-card-hovered: #EEE0CB; /* password-card img-title background    */
+  --color-form-bg: #fff7f7; /* form / edit-form background           */
+
+  /* ── Text ────────────────────────────────────────────── */
+  --color-text-primary: #2b2b2b; /* main body text, card titles           */
+  --color-text-secondary: #666666; /* subtitles, URLs, small labels         */
+  --color-text-muted: #858383; /* very faint labels (account-label)     */
+  --color-text-nav: #333333; /* navigation link text                  */
+  --color-text-placeholder: #555555; /* search icon & placeholder areas       */
+  --color-text-dark: #222222; /* cancel-button text                    */
+
+  /* ── Borders & Dividers ──────────────────────────────── */
+  --color-border: #e0e0e0; /* generic dividers, domain-option border*/
+  --color-border-input: #e2dede; /* form input borders                    */
+  --color-border-light: #eff1f4; /* header/section separator line         */
+  --color-border-input-alt: #cccccc; /* challenge input border                */
+
+  /* ── Interactive states ──────────────────────────────── */
+  --color-nav-hover-bg: #e8e8e8; /* nav link hover background             */
+  --color-input-focus: #1d3353; /* input focus ring color (= primary)    */
+  --color-input-focus-ring: rgba(29, 51, 83, 0.15); /* input focus shadow     */
+
+  /* ── Feedback: Danger / Error ────────────────────────── */
+  --color-danger: #C2847A;
+  --color-danger-hovered: #a63434; /* delete/cancel buttons, error text     */
+  --color-danger-on: #ffffff; /* text on danger background             */
+  --color-danger-bg: #ffebee; /* error message background              */
+
+  /* ── Feedback: Success ───────────────────────────────── */
+  --color-success: #0b7a28; /* success text ("Saved!")               */
+
+  /* ── Domain challenge accent (correct answer hint) ───── */
+  --color-domain-accent: #9bd49e; /* selected / correct domain border      */
+  --color-domain-bg: #d9f4da; /* selected / correct domain background  */
+
+  /* ── Misc UI ─────────────────────────────────────────── */
+  --color-cancel-bg: #ececec; /* challenge cancel button background    */
+  --color-copied-bg: #e8f3ff; /* "Copied to clipboard" banner          */
+  --color-copied-text: #1d3353; /* "Copied to clipboard" text            */
+}

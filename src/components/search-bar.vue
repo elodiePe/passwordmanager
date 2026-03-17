@@ -33,6 +33,8 @@ export default {
   padding: 0.5rem 0.875rem;
   /* margin-top:1rem; */
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+   border-radius: 12px;
+   /* max-width: 300px; */
 }
 
 .search-bar input {
