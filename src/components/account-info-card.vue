@@ -101,7 +101,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import { getCurrentSessionId } from '../composables/useSession'
 
 const props = defineProps({
   account_name: {
@@ -111,6 +112,18 @@ const props = defineProps({
   password: {
     type: String,
     required: true,
+  },
+  accountWebsite: {
+    type: String,
+    default: '',
+  },
+  accountCredentialLinkKey: {
+    type: String,
+    default: '',
+  },
+  accountId: {
+    type: String,
+    default: '',
   },
   requireChallenge: {
     type: Boolean,
@@ -124,6 +137,9 @@ const REQUIRED_TEXT = 'I am not being scammed'
 const CHALLENGE_TYPES = ['text', 'slider', 'domain']
 const SLIDER_TOLERANCE = 2
 const CHALLENGE_INDEX_STORAGE_KEY = 'pm.challenge.index'
+const CHALLENGE_VALIDITY_MS = 5 * 60 * 1000
+const PM_FRICTION_LOG_KEY_PREFIX = 'pm-positive-friction-log'
+const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
 
 const loadChallengeIndex = () => {
   if (typeof window === 'undefined') return 0
@@ -154,6 +170,115 @@ const selectedDomain = ref('')
 const domainOptions = ref([])
 
 const pendingAction = ref(null)
+const challengeStartedAtMs = ref(null)
+const actionRequestedAtMs = ref(null)
+const challengeAttemptCount = ref(0)
+const challengeValidUntilMs = ref(0)
+
+const hasActiveChallengeGrant = () => {
+  const now = Date.now()
+  if (challengeValidUntilMs.value > now) return true
+
+  if (challengeValidUntilMs.value > 0) {
+    challengeValidUntilMs.value = 0
+  }
+
+  return false
+}
+
+const postCredentialCopyEvent = async (actionType, outcome, challengeDurationSeconds, challengeAttempts) => {
+  if (actionType !== 'copyPassword' && actionType !== 'copyUsername' && actionType !== 'togglePassword') return
+
+  const completedAtMs = Date.now()
+  const requestedAtMs = typeof actionRequestedAtMs.value === 'number' ? actionRequestedAtMs.value : completedAtMs
+  const durationMs = Math.max(0, completedAtMs - requestedAtMs)
+  const durationSeconds = durationMs / 1000
+
+  console.log('[StudyTiming] Credential copy timing', {
+    actionType,
+    outcome,
+    requestedAtMs,
+    completedAtMs,
+    durationMs,
+    durationSeconds,
+    challengeDurationSeconds: typeof challengeDurationSeconds === 'number' ? challengeDurationSeconds : null,
+    challengeAttempts: typeof challengeAttempts === 'number' ? challengeAttempts : null
+  })
+
+  const payload = {
+    sessionId: getCurrentSessionId(),
+    managerMode: window.localStorage.getItem('pm.managerMode') || 'unknown',
+    website: props.accountWebsite || null,
+    credentialLinkKey: props.accountCredentialLinkKey || null,
+    accountId: props.accountId || null,
+    actionType,
+    challengeType: typeof challengeDurationSeconds === 'number' ? challengeType.value : null,
+    challengeDurationSeconds: typeof challengeDurationSeconds === 'number' ? challengeDurationSeconds : null,
+    challengeAttempts: typeof challengeAttempts === 'number' ? challengeAttempts : null,
+    requestedAtMs,
+    completedAtMs,
+    durationMs,
+    durationSeconds,
+    outcome
+  }
+
+  try {
+    await fetch(`${apiBase}/api/study/credential-copy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      keepalive: true
+    })
+  } catch {
+    // Ignore logging failures so user action is not blocked.
+  }
+
+  actionRequestedAtMs.value = null
+}
+
+const saveChallengeEvent = (outcome) => {
+  if (challengeStartedAtMs.value === null) return
+
+  const completedAtMs = Date.now()
+  const durationMs = Math.max(0, completedAtMs - challengeStartedAtMs.value)
+  const durationSeconds = durationMs / 1000
+  const sessionId = getCurrentSessionId()
+  const logKey = `${PM_FRICTION_LOG_KEY_PREFIX}:${sessionId}`
+
+  const event = {
+    sessionId,
+    challengeType: challengeType.value,
+    action: pendingAction.value,
+    outcome,
+    attempts: challengeAttemptCount.value,
+    startedAtMs: challengeStartedAtMs.value,
+    completedAtMs,
+    durationMs,
+    durationSeconds
+  }
+
+  try {
+    const existing = JSON.parse(window.localStorage.getItem(logKey) || '[]')
+    const history = Array.isArray(existing) ? existing : []
+    history.push(event)
+    window.localStorage.setItem(logKey, JSON.stringify(history))
+  } catch {
+    window.localStorage.setItem(logKey, JSON.stringify([event]))
+  }
+
+  challengeStartedAtMs.value = null
+  console.log('[StudyTiming] Challenge timing', {
+    action: pendingAction.value,
+    outcome,
+    startedAtMs: event.startedAtMs,
+    completedAtMs,
+    durationMs,
+    durationSeconds,
+    challengeType: challengeType.value,
+    attempts: challengeAttemptCount.value
+  })
+  return durationSeconds
+}
 
 const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5)
 
@@ -178,6 +303,7 @@ const pickNextChallenge = () => {
   saveChallengeIndex(challengeIndex.value)
   challengeInput.value = ''
   challengeError.value = ''
+  challengeAttemptCount.value = 0
   sliderValue.value = 0
   selectedDomain.value = ''
   domainOptions.value = []
@@ -197,38 +323,72 @@ const copyToClipboard = async (text) => {
   try {
     await navigator.clipboard.writeText(text)
     emit('copied')
+    return true
   } catch (error) {
     console.error('Failed to copy text:', error)
+    return false
   }
 }
 
 const runAction = async (action) => {
   if (action === 'togglePassword') {
     togglePasswordVisibility()
+    return { success: true, isTrackedAction: true }
   } else if (action === 'copyPassword') {
-    await copyToClipboard(props.password)
+    const success = await copyToClipboard(props.password)
+    return { success, isTrackedAction: true }
   } else if (action === 'copyUsername') {
-    await copyToClipboard(props.account_name)
+    const success = await copyToClipboard(props.account_name)
+    return { success, isTrackedAction: true }
   }
+
+  return { success: false, isTrackedAction: false }
 }
 
 const requestSensitiveAction = async (action) => {
+  actionRequestedAtMs.value = Date.now()
+
+  if (action === 'copyUsername') {
+    const result = await runAction(action)
+    if (result.isTrackedAction) {
+      await postCredentialCopyEvent(action, result.success ? 'completed' : 'failed', null, 0)
+    }
+    return
+  }
+
   if (!props.requireChallenge) {
-    await runAction(action)
+    const result = await runAction(action)
+    if (result.isTrackedAction) {
+      await postCredentialCopyEvent(action, result.success ? 'completed' : 'failed', null, 0)
+    }
+    return
+  }
+
+  if (action !== 'copyUsername' && hasActiveChallengeGrant()) {
+    const result = await runAction(action)
+    if (result.isTrackedAction) {
+      await postCredentialCopyEvent(action, result.success ? 'completed' : 'failed', null, 0)
+    }
     return
   }
 
   if (action === 'togglePassword' && isPasswordVisible.value) {
-    togglePasswordVisibility()
+    const result = await runAction(action)
+    if (result.isTrackedAction) {
+      await postCredentialCopyEvent(action, result.success ? 'completed' : 'failed', null, 0)
+    }
     return
   }
 
   pendingAction.value = action
   pickNextChallenge()
+  challengeStartedAtMs.value = Date.now()
   showChallenge.value = true
 }
 
 const confirmChallenge = async () => {
+  challengeAttemptCount.value += 1
+
   if (challengeType.value === 'text') {
     if (challengeInput.value.trim() !== REQUIRED_TEXT) {
       challengeError.value = 'Text does not match.'
@@ -248,6 +408,8 @@ const confirmChallenge = async () => {
 
   showChallenge.value = false
   challengeError.value = ''
+  const challengeDurationSeconds = saveChallengeEvent('completed')
+  challengeValidUntilMs.value = Date.now() + CHALLENGE_VALIDITY_MS
 
   const action = pendingAction.value
   pendingAction.value = null
@@ -256,18 +418,45 @@ const confirmChallenge = async () => {
   selectedDomain.value = ''
   domainOptions.value = []
 
-  if (action) await runAction(action)
+  if (action) {
+    const result = await runAction(action)
+    if (result.isTrackedAction) {
+      await postCredentialCopyEvent(
+        action,
+        result.success ? 'completed' : 'failed',
+        challengeDurationSeconds,
+        challengeAttemptCount.value
+      )
+    }
+  }
 }
 
 const cancelChallenge = () => {
+  const canceledAction = pendingAction.value
+  const challengeDurationSeconds = saveChallengeEvent('canceled')
+
+  if (canceledAction === 'copyPassword' || canceledAction === 'copyUsername' || canceledAction === 'togglePassword') {
+    void postCredentialCopyEvent(canceledAction, 'canceled', challengeDurationSeconds, challengeAttemptCount.value)
+  }
+
   showChallenge.value = false
   challengeInput.value = ''
   challengeError.value = ''
   sliderValue.value = 0
   selectedDomain.value = ''
   domainOptions.value = []
+  challengeAttemptCount.value = 0
   pendingAction.value = null
 }
+
+// Challenge validity is bound to the currently viewed password entry.
+// Switching account context forces a new challenge even within 5 minutes.
+watch(
+  () => [props.accountId, props.accountCredentialLinkKey, props.accountWebsite],
+  () => {
+    challengeValidUntilMs.value = 0
+  }
+)
 </script>
 
 <style scoped>

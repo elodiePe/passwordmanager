@@ -24,6 +24,16 @@
       </label>
 
       <label>
+        Link Key (for email linkage)
+        <input
+          v-model="credentialLinkKey"
+          type="text"
+          placeholder="e.g. github"
+        />
+        <small>Used to match `linkedCredentialWebsite` in the email simulation.</small>
+      </label>
+
+      <label>
         Username/Email
         <input v-model="username" type="text" required />
       </label>
@@ -59,10 +69,11 @@ const username = ref('')
 const password = ref('')
 const websiteUrl = ref('')
 const iconPreview = ref('')
+const credentialLinkKey = ref('')
 const loading = ref(false)
 const error = ref('')
 const success = ref(false)
-const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/+$/, '')
+const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
 
 const websiteName = computed(() => {
   try {
@@ -74,6 +85,15 @@ const websiteName = computed(() => {
   } catch {
     return ''
   }
+})
+
+const effectiveCredentialLinkKey = computed(() => {
+  const raw = credentialLinkKey.value || websiteName.value || ''
+  return String(raw)
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9_-]/g, '')
 })
 
 const updateIcon = () => {
@@ -100,6 +120,7 @@ const save = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         websiteUrl: websiteUrl.value,
+        credentialLinkKey: effectiveCredentialLinkKey.value,
         username: username.value,
         password: password.value,
       }),
@@ -112,6 +133,7 @@ const save = async () => {
     password.value = ''
     websiteUrl.value = ''
     iconPreview.value = ''
+    credentialLinkKey.value = ''
 
     setTimeout(() => router.push('/'), 1500)
   } catch (e) {

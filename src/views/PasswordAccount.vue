@@ -51,6 +51,9 @@
     v-if="account && !isEditing"
     :account_name="account.username"
     :password="account.password"
+    :account-website="account.website"
+    :account-credential-link-key="account.credentialLinkKey"
+    :account-id="account._id"
     :require-challenge="requireChallenge"
     @copied="handleCopied"
   />
@@ -80,11 +83,12 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AccountInfoCard from '@/components/account-info-card.vue'
+import { getCurrentSessionId } from '../composables/useSession'
 
 const route = useRoute()
 const router = useRouter()
 const account = ref(null)
-const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/+$/, '')
+const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
 const isEditing = ref(false)
 const isSaving = ref(false)
 const formUsername = ref('')
@@ -98,6 +102,8 @@ const showCopiedMessage = ref(false)
 let copiedTimer = null
 const isLoading = ref(true)
 const loadError = ref('')
+const pageOpenedAtMs = ref(null)
+const pageSessionLogged = ref(false)
 
 const handleCopied = () => {
   showCopiedMessage.value = true
@@ -108,7 +114,9 @@ const handleCopied = () => {
 }
 
 onUnmounted(() => {
+  void flushPasswordPageSession('route-leave')
   if (copiedTimer) clearTimeout(copiedTimer)
+  window.removeEventListener('beforeunload', handleBeforeUnload)
   document.removeEventListener('click', handleDocumentClick)
 })
 
@@ -135,6 +143,8 @@ onMounted(async () => {
 
     formUsername.value = account.value.username || ''
     formPassword.value = account.value.password || ''
+    pageOpenedAtMs.value = Date.now()
+    pageSessionLogged.value = false
   } catch (error) {
     loadError.value = error.message || 'Failed to load account'
     account.value = null
@@ -143,7 +153,42 @@ onMounted(async () => {
   }
 
   document.addEventListener('click', handleDocumentClick)
+  window.addEventListener('beforeunload', handleBeforeUnload)
 })
+
+const handleBeforeUnload = () => {
+  void flushPasswordPageSession('beforeunload')
+}
+
+const flushPasswordPageSession = async (exitReason) => {
+  if (pageSessionLogged.value) return
+  if (!account.value) return
+  if (typeof pageOpenedAtMs.value !== 'number') return
+
+  pageSessionLogged.value = true
+
+  const endedAtMs = Date.now()
+  const payload = {
+    sessionId: getCurrentSessionId(),
+    managerMode: window.localStorage.getItem('pm.managerMode') || 'unknown',
+    website: account.value.website || String(route.params.website || ''),
+    accountId: account.value._id || String(route.params.accountId || ''),
+    startedAtMs: pageOpenedAtMs.value,
+    endedAtMs,
+    exitReason
+  }
+
+  try {
+    await fetch(`${apiBase}/api/study/password-page-session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      keepalive: true
+    })
+  } catch {
+    // Ignore logging failures so user flow is never blocked.
+  }
+}
 
 const handleDocumentClick = (event) => {
   if (!mobileActionsRef.value) return

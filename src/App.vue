@@ -1,7 +1,14 @@
 <script setup>
+import { onMounted } from 'vue'
 import Navigation from './components/navigation.vue'
 import HeaderLogo from './components/headerlogo.vue'
 import SearchBar from './components/search-bar.vue'
+import { setCurrentSessionId, getCurrentSessionId } from './composables/useSession'
+
+onMounted(() => {
+  // Keep a normalized shared session id available across apps.
+  setCurrentSessionId(getCurrentSessionId())
+})
 </script>
 
 <template>

@@ -36,11 +36,19 @@ import SearchBar from '../components/search-bar.vue'
 
 const data = ref([])
 const searchQuery = ref('')
-const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/+$/, '')
+const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
+
+function normalizePasswordList(payload) {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.data)) return payload.data
+  if (Array.isArray(payload?.items)) return payload.items
+  return []
+}
 
 const uniqueWebsites = computed(() => {
   const websites = new Map()
   data.value.forEach((item) => {
+    if (!item || typeof item !== 'object' || !item.website) return
     if (!websites.has(item.website)) {
       websites.set(item.website, {
         name: item.website,
@@ -62,8 +70,13 @@ const handleSearch = (query) => {
 }
 
 onMounted(async () => {
-  const res = await fetch(`${apiBase}/api/passwords`)
-  data.value = await res.json()
+  try {
+    const res = await fetch(`${apiBase}/api/passwords`)
+    const payload = await res.json()
+    data.value = normalizePasswordList(payload)
+  } catch {
+    data.value = []
+  }
 })
 </script>
 

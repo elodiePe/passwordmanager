@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <link rel="icon" href="/favicon.ico">
-    <link rel="manifest" href="/passwordmanager/manifest.json">
+    <link rel="manifest" href="%BASE_URL%manifest.json">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="A secure password manager PWA">
     <meta name="theme-color" content="#007bff">
@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Passwords">
-    <link rel="apple-touch-icon" href="/passwordmanager/passwordmanager/icon-192.png">
+    <link rel="apple-touch-icon" href="%BASE_URL%passwordmanager/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet">
     <title>Password Manager</title>
     <style>
@@ -32,7 +32,7 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/passwordmanager/sw.js')
+          navigator.serviceWorker.register(new URL('sw.js', document.baseURI).pathname)
             .then(() => console.log('✅ Service Worker registered'))
             .catch(err => console.error('❌ Service Worker registration failed:', err))
         })

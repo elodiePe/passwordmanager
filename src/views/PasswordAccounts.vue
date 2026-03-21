@@ -51,7 +51,7 @@ const accounts = ref([])
 const showPassword = ref({})
 const showMobileActions = ref(false)
 const mobileActionsRef = ref(null)
-const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/+$/, '')
+const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
 
 const websiteName = computed(() => route.params.website || 'Accounts')
 

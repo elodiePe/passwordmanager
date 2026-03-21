@@ -1,8 +1,10 @@
 const CACHE_NAME = 'passwordmanager-v2'
+const SW_BASE_PATH = self.location.pathname.replace(/sw\.js$/, '')
+const withBase = (path) => `${SW_BASE_PATH}${String(path).replace(/^\//, '')}`
 const urlsToCache = [
-  '/passwordmanager/',
-  '/passwordmanager/index.html',
-  '/passwordmanager/manifest.json'
+  withBase('/'),
+  withBase('/index.html'),
+  withBase('/manifest.json')
 ]
 
 // Install event
@@ -59,13 +61,13 @@ self.addEventListener('fetch', (event) => {
           if (response && response.status === 200) {
             const responseToCache = response.clone()
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put('/passwordmanager/index.html', responseToCache)
+              cache.put(withBase('/index.html'), responseToCache)
             })
           }
           return response
         })
         .catch(() => {
-          return caches.match('/passwordmanager/index.html')
+          return caches.match(withBase('/index.html'))
         })
     )
     return
@@ -90,7 +92,7 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           // Return cached index.html as fallback for offline navigation
-          return caches.match('/passwordmanager/index.html')
+          return caches.match(withBase('/index.html'))
         })
     })
   )
