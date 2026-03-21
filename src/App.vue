@@ -14,7 +14,7 @@ onMounted(() => {
 <template>
   <HeaderLogo />
   <!-- <Navigation /> -->
- 
+
   <main class="main-content">
     <router-view />
   </main>
@@ -28,12 +28,11 @@ onMounted(() => {
 body {
   margin: 0;
   padding: 0;
-
 }
 
 .main-content {
   padding-top: 5.75rem;
-  margin-top : 5.75rem;
+  margin-top: 5.75rem;
   max-width: 5.75rem;
   padding: 1rem;
   max-width: 100%;

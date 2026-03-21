@@ -1,11 +1,7 @@
 const CACHE_NAME = 'passwordmanager-v2'
 const SW_BASE_PATH = self.location.pathname.replace(/sw\.js$/, '')
 const withBase = (path) => `${SW_BASE_PATH}${String(path).replace(/^\//, '')}`
-const urlsToCache = [
-  withBase('/'),
-  withBase('/index.html'),
-  withBase('/manifest.json')
-]
+const urlsToCache = [withBase('/'), withBase('/index.html'), withBase('/manifest.json')]
 
 // Install event
 self.addEventListener('install', (event) => {
@@ -14,7 +10,7 @@ self.addEventListener('install', (event) => {
       return cache.addAll(urlsToCache).catch(() => {
         console.warn('Failed to cache some resources during install')
       })
-    })
+    }),
   )
   self.skipWaiting()
 })
@@ -28,9 +24,9 @@ self.addEventListener('activate', (event) => {
           if (cacheName !== CACHE_NAME) {
             return caches.delete(cacheName)
           }
-        })
+        }),
       )
-    })
+    }),
   )
   self.clients.claim()
 })
@@ -44,11 +40,10 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.includes('/api/') || url.protocol === 'chrome-extension:') {
     event.respondWith(
       fetch(request).catch(() => {
-        return new Response(
-          JSON.stringify({ error: 'Offline - cannot fetch data' }),
-          { headers: { 'Content-Type': 'application/json' } }
-        )
-      })
+        return new Response(JSON.stringify({ error: 'Offline - cannot fetch data' }), {
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }),
     )
     return
   }
@@ -68,7 +63,7 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           return caches.match(withBase('/index.html'))
-        })
+        }),
     )
     return
   }
@@ -94,6 +89,6 @@ self.addEventListener('fetch', (event) => {
           // Return cached index.html as fallback for offline navigation
           return caches.match(withBase('/index.html'))
         })
-    })
+    }),
   )
 })

@@ -1,89 +1,98 @@
-import express from "express";
-import mongoose from "mongoose";
-import cors from "cors";
-import dotenv from "dotenv";
+import express from 'express'
+import mongoose from 'mongoose'
+import cors from 'cors'
+import dotenv from 'dotenv'
 
-dotenv.config();
+dotenv.config()
 
-const app = express();
+const app = express()
 
-const allowedOrigins = [
-  'https://elodiepe.github.io'
-];
+const allowedOrigins = ['https://elodiepe.github.io']
 
-app.use(cors({
-  origin(origin, callback) {
-    // Allow non-browser clients and same-origin requests without Origin header.
-    if (!origin) return callback(null, true);
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Allow non-browser clients and same-origin requests without Origin header.
+      if (!origin) return callback(null, true)
 
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true)
+      }
 
-    // Allow local development ports (e.g. 5173, 5174, etc.).
-    if (/^http:\/\/localhost:\d+$/.test(origin) || /^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) {
-      return callback(null, true);
-    }
+      // Allow local development ports (e.g. 5173, 5174, etc.).
+      if (/^http:\/\/localhost:\d+$/.test(origin) || /^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) {
+        return callback(null, true)
+      }
 
-    return callback(new Error(`CORS blocked for origin: ${origin}`));
+      return callback(new Error(`CORS blocked for origin: ${origin}`))
+    },
+    credentials: true,
+  }),
+)
+
+app.use(express.json())
+
+const PasswordSchema = new mongoose.Schema(
+  {
+    website: { type: String, required: true },
+    credentialLinkKey: { type: String, required: false, index: true },
+    websiteUrl: { type: String, required: true },
+    username: { type: String, required: true },
+    password: { type: String, required: true },
+    iconUrl: { type: String, required: false },
   },
-  credentials: true
-}));
+  { timestamps: true },
+)
 
-app.use(express.json());
+const Password = mongoose.model('Password', PasswordSchema)
 
-const PasswordSchema = new mongoose.Schema({
-  website: { type: String, required: true },
-  credentialLinkKey: { type: String, required: false, index: true },
-  websiteUrl: { type: String, required: true },
-  username: { type: String, required: true },
-  password: { type: String, required: true },
-  iconUrl: { type: String, required: false }
-}, { timestamps: true });
+const PasswordPageSessionSchema = new mongoose.Schema(
+  {
+    sessionId: { type: String, required: true, index: true },
+    managerMode: { type: String, required: true, default: 'unknown' },
+    website: { type: String, required: false },
+    accountId: { type: String, required: false },
+    startedAtMs: { type: Number, required: true },
+    endedAtMs: { type: Number, required: true },
+    durationMs: { type: Number, required: true },
+    durationSeconds: { type: Number, required: true },
+    exitReason: { type: String, required: false },
+  },
+  { timestamps: true },
+)
 
-const Password = mongoose.model("Password", PasswordSchema);
+const PasswordPageSession = mongoose.model('PasswordPageSession', PasswordPageSessionSchema)
 
-const PasswordPageSessionSchema = new mongoose.Schema({
-  sessionId: { type: String, required: true, index: true },
-  managerMode: { type: String, required: true, default: 'unknown' },
-  website: { type: String, required: false },
-  accountId: { type: String, required: false },
-  startedAtMs: { type: Number, required: true },
-  endedAtMs: { type: Number, required: true },
-  durationMs: { type: Number, required: true },
-  durationSeconds: { type: Number, required: true },
-  exitReason: { type: String, required: false }
-}, { timestamps: true });
+const CredentialCopyEventSchema = new mongoose.Schema(
+  {
+    sessionId: { type: String, required: true, index: true },
+    managerMode: { type: String, required: true, default: 'unknown' },
+    website: { type: String, required: false },
+    credentialLinkKey: { type: String, required: false, index: true },
+    accountId: { type: String, required: false },
+    actionType: { type: String, required: true },
+    challengeType: { type: String, required: false },
+    challengeDurationSeconds: { type: Number, required: false },
+    challengeAttempts: { type: Number, required: false },
+    requestedAtMs: { type: Number, required: true },
+    completedAtMs: { type: Number, required: true },
+    durationMs: { type: Number, required: true },
+    durationSeconds: { type: Number, required: true },
+    outcome: { type: String, required: true, default: 'completed' },
+  },
+  { timestamps: true },
+)
 
-const PasswordPageSession = mongoose.model("PasswordPageSession", PasswordPageSessionSchema);
-
-const CredentialCopyEventSchema = new mongoose.Schema({
-  sessionId: { type: String, required: true, index: true },
-  managerMode: { type: String, required: true, default: 'unknown' },
-  website: { type: String, required: false },
-  credentialLinkKey: { type: String, required: false, index: true },
-  accountId: { type: String, required: false },
-  actionType: { type: String, required: true },
-  challengeType: { type: String, required: false },
-  challengeDurationSeconds: { type: Number, required: false },
-  challengeAttempts: { type: Number, required: false },
-  requestedAtMs: { type: Number, required: true },
-  completedAtMs: { type: Number, required: true },
-  durationMs: { type: Number, required: true },
-  durationSeconds: { type: Number, required: true },
-  outcome: { type: String, required: true, default: 'completed' }
-}, { timestamps: true });
-
-const CredentialCopyEvent = mongoose.model("CredentialCopyEvent", CredentialCopyEventSchema);
+const CredentialCopyEvent = mongoose.model('CredentialCopyEvent', CredentialCopyEventSchema)
 
 // Helper to extract website name from URL
 function extractWebsiteName(url) {
   try {
-    const hostname = new URL(url).hostname;
+    const hostname = new URL(url).hostname
     // Remove www. and get domain name without extension
-    return hostname.replace(/^www\./, '').split('.')[0];
+    return hostname.replace(/^www\./, '').split('.')[0]
   } catch {
-    return 'Unknown';
+    return 'Unknown'
   }
 }
 
@@ -92,138 +101,137 @@ function normalizeLinkKey(value) {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9_-]/g, '');
+    .replace(/[^a-z0-9_-]/g, '')
 }
 
 // Helper to get favicon URL
 function getFaviconUrl(websiteUrl) {
-  if (!websiteUrl) return null;
+  if (!websiteUrl) return null
   try {
-    const url = new URL(websiteUrl);
-    return `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=64`;
+    const url = new URL(websiteUrl)
+    return `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=64`
   } catch {
-    return null;
+    return null
   }
 }
 
-app.get("/api/passwords", async (req, res) => {
+app.get('/api/passwords', async (req, res) => {
   try {
-    const items = await Password.find().sort({ createdAt: -1 });
-    res.json(items);
+    const items = await Password.find().sort({ createdAt: -1 })
+    res.json(items)
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message })
   }
-});
+})
 
 // Get all accounts for a specific website
-app.get("/api/passwords/:website", async (req, res) => {
+app.get('/api/passwords/:website', async (req, res) => {
   try {
-    const accounts = await Password.find({ 
-      website: req.params.website 
-    }).sort({ createdAt: -1 });
-    res.json(accounts);
+    const accounts = await Password.find({
+      website: req.params.website,
+    }).sort({ createdAt: -1 })
+    res.json(accounts)
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message })
   }
-});
-
-
+})
 
 // ID route (kept)
-app.get("/api/passwords/:website/:accountId", async (req, res) => {
+app.get('/api/passwords/:website/:accountId', async (req, res) => {
   try {
-    const accounts = await Password.find({ 
+    const accounts = await Password.find({
       website: req.params.website,
-      _id: req.params.accountId
-    }).sort({ createdAt: -1 });
-    res.json(accounts);
+      _id: req.params.accountId,
+    }).sort({ createdAt: -1 })
+    res.json(accounts)
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message })
   }
-});
+})
 
-app.post("/api/passwords", async (req, res) => {
+app.post('/api/passwords', async (req, res) => {
   try {
-    const website = extractWebsiteName(req.body.websiteUrl);
-    const credentialLinkKey = normalizeLinkKey(req.body.credentialLinkKey) || normalizeLinkKey(website);
-    const iconUrl = getFaviconUrl(req.body.websiteUrl);
-    
+    const website = extractWebsiteName(req.body.websiteUrl)
+    const credentialLinkKey =
+      normalizeLinkKey(req.body.credentialLinkKey) || normalizeLinkKey(website)
+    const iconUrl = getFaviconUrl(req.body.websiteUrl)
+
     const item = await Password.create({
       website,
       credentialLinkKey,
       websiteUrl: req.body.websiteUrl,
       username: req.body.username,
       password: req.body.password,
-      iconUrl
-    });
-    res.status(201).json(item);
+      iconUrl,
+    })
+    res.status(201).json(item)
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: error.message })
   }
-});
+})
 
-app.put("/api/passwords/:website/:accountId", async (req, res) => {
+app.put('/api/passwords/:website/:accountId', async (req, res) => {
   try {
     const updates = {
       username: req.body.username,
       password: req.body.password,
-      credentialLinkKey: normalizeLinkKey(req.body.credentialLinkKey)
-    };
+      credentialLinkKey: normalizeLinkKey(req.body.credentialLinkKey),
+    }
 
     if (!updates.credentialLinkKey) {
-      delete updates.credentialLinkKey;
+      delete updates.credentialLinkKey
     }
 
     const updated = await Password.findOneAndUpdate(
       { _id: req.params.accountId, website: req.params.website },
       { $set: updates },
-      { new: true, runValidators: true }
-    );
+      { new: true, runValidators: true },
+    )
 
     if (!updated) {
-      return res.status(404).json({ error: 'Account not found' });
+      return res.status(404).json({ error: 'Account not found' })
     }
 
-    res.json(updated);
+    res.json(updated)
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: error.message })
   }
-});
+})
 
-app.delete("/api/passwords/:website/:accountId", async (req, res) => {
+app.delete('/api/passwords/:website/:accountId', async (req, res) => {
   try {
     const deleted = await Password.findOneAndDelete({
       _id: req.params.accountId,
-      website: req.params.website
-    });
+      website: req.params.website,
+    })
 
     if (!deleted) {
-      return res.status(404).json({ error: 'Account not found' });
+      return res.status(404).json({ error: 'Account not found' })
     }
 
-    res.status(204).send();
+    res.status(204).send()
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: error.message })
   }
-});
+})
 
 app.post('/api/study/password-page-session', async (req, res) => {
   try {
-    const sessionId = String(req.body.sessionId || '').trim();
-    const managerMode = String(req.body.managerMode || 'unknown').trim() || 'unknown';
-    const startedAtMs = Number(req.body.startedAtMs);
-    const endedAtMs = Number(req.body.endedAtMs);
+    const sessionId = String(req.body.sessionId || '').trim()
+    const managerMode = String(req.body.managerMode || 'unknown').trim() || 'unknown'
+    const startedAtMs = Number(req.body.startedAtMs)
+    const endedAtMs = Number(req.body.endedAtMs)
 
     if (!sessionId) {
-      return res.status(400).json({ error: 'sessionId is required' });
+      return res.status(400).json({ error: 'sessionId is required' })
     }
 
     if (!Number.isFinite(startedAtMs) || !Number.isFinite(endedAtMs)) {
-      return res.status(400).json({ error: 'startedAtMs and endedAtMs must be numbers' });
+      return res.status(400).json({ error: 'startedAtMs and endedAtMs must be numbers' })
     }
 
-    const durationMs = Math.max(0, endedAtMs - startedAtMs);
-    const durationSeconds = durationMs / 1000;
+    const durationMs = Math.max(0, endedAtMs - startedAtMs)
+    const durationSeconds = durationMs / 1000
 
     const created = await PasswordPageSession.create({
       sessionId,
@@ -234,55 +242,52 @@ app.post('/api/study/password-page-session', async (req, res) => {
       endedAtMs,
       durationMs,
       durationSeconds,
-      exitReason: req.body.exitReason || null
-    });
+      exitReason: req.body.exitReason || null,
+    })
 
-    res.status(201).json(created);
+    res.status(201).json(created)
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: error.message })
   }
-});
+})
 
 app.get('/api/study/password-page-session', async (req, res) => {
   try {
-    const sessionId = String(req.query.sessionId || '').trim();
+    const sessionId = String(req.query.sessionId || '').trim()
     if (!sessionId) {
-      return res.status(400).json({ error: 'sessionId query param is required' });
+      return res.status(400).json({ error: 'sessionId query param is required' })
     }
 
-    const rows = await PasswordPageSession
-      .find({ sessionId })
-      .sort({ startedAtMs: 1 })
-      .lean();
+    const rows = await PasswordPageSession.find({ sessionId }).sort({ startedAtMs: 1 }).lean()
 
-    res.json(rows);
+    res.json(rows)
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message })
   }
-});
+})
 
 app.post('/api/study/credential-copy', async (req, res) => {
   try {
-    const sessionId = String(req.body.sessionId || '').trim();
-    const managerMode = String(req.body.managerMode || 'unknown').trim() || 'unknown';
-    const actionType = String(req.body.actionType || '').trim();
-    const requestedAtMs = Number(req.body.requestedAtMs);
-    const completedAtMs = Number(req.body.completedAtMs);
+    const sessionId = String(req.body.sessionId || '').trim()
+    const managerMode = String(req.body.managerMode || 'unknown').trim() || 'unknown'
+    const actionType = String(req.body.actionType || '').trim()
+    const requestedAtMs = Number(req.body.requestedAtMs)
+    const completedAtMs = Number(req.body.completedAtMs)
 
     if (!sessionId) {
-      return res.status(400).json({ error: 'sessionId is required' });
+      return res.status(400).json({ error: 'sessionId is required' })
     }
 
     if (!actionType) {
-      return res.status(400).json({ error: 'actionType is required' });
+      return res.status(400).json({ error: 'actionType is required' })
     }
 
     if (!Number.isFinite(requestedAtMs) || !Number.isFinite(completedAtMs)) {
-      return res.status(400).json({ error: 'requestedAtMs and completedAtMs must be numbers' });
+      return res.status(400).json({ error: 'requestedAtMs and completedAtMs must be numbers' })
     }
 
-    const durationMs = Math.max(0, completedAtMs - requestedAtMs);
-    const durationSeconds = durationMs / 1000;
+    const durationMs = Math.max(0, completedAtMs - requestedAtMs)
+    const durationSeconds = durationMs / 1000
 
     const created = await CredentialCopyEvent.create({
       sessionId,
@@ -302,73 +307,71 @@ app.post('/api/study/credential-copy', async (req, res) => {
       completedAtMs,
       durationMs,
       durationSeconds,
-      outcome: String(req.body.outcome || 'completed')
-    });
+      outcome: String(req.body.outcome || 'completed'),
+    })
 
-    res.status(201).json(created);
+    res.status(201).json(created)
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: error.message })
   }
-});
+})
 
 app.get('/api/study/credential-copy', async (req, res) => {
   try {
-    const sessionId = String(req.query.sessionId || '').trim();
+    const sessionId = String(req.query.sessionId || '').trim()
     if (!sessionId) {
-      return res.status(400).json({ error: 'sessionId query param is required' });
+      return res.status(400).json({ error: 'sessionId query param is required' })
     }
 
-    const rows = await CredentialCopyEvent
-      .find({ sessionId })
-      .sort({ requestedAtMs: 1 })
-      .lean();
+    const rows = await CredentialCopyEvent.find({ sessionId }).sort({ requestedAtMs: 1 }).lean()
 
-    res.json(rows);
+    res.json(rows)
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message })
   }
-});
+})
 
 app.delete('/api/study/credential-copy', async (req, res) => {
   try {
-    const sessionId = String(req.query.sessionId || '').trim();
+    const sessionId = String(req.query.sessionId || '').trim()
     if (!sessionId) {
-      return res.status(400).json({ error: 'sessionId query param is required' });
+      return res.status(400).json({ error: 'sessionId query param is required' })
     }
 
-    const result = await CredentialCopyEvent.deleteMany({ sessionId });
+    const result = await CredentialCopyEvent.deleteMany({ sessionId })
 
-    res.json({ 
+    res.json({
       message: `Deleted ${result.deletedCount} credential copy events for session ${sessionId}`,
-      deletedCount: result.deletedCount
-    });
+      deletedCount: result.deletedCount,
+    })
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message })
   }
-});
+})
 
 app.delete('/api/study/password-page-session', async (req, res) => {
   try {
-    const sessionId = String(req.query.sessionId || '').trim();
+    const sessionId = String(req.query.sessionId || '').trim()
     if (!sessionId) {
-      return res.status(400).json({ error: 'sessionId query param is required' });
+      return res.status(400).json({ error: 'sessionId query param is required' })
     }
 
-    const result = await PasswordPageSession.deleteMany({ sessionId });
+    const result = await PasswordPageSession.deleteMany({ sessionId })
 
-    res.json({ 
+    res.json({
       message: `Deleted ${result.deletedCount} password page sessions for session ${sessionId}`,
-      deletedCount: result.deletedCount
-    });
+      deletedCount: result.deletedCount,
+    })
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message })
   }
-});
+})
 
-mongoose.connect(process.env.MONGODB_URI)
+mongoose
+  .connect(process.env.MONGODB_URI)
   .then(() => {
     app.listen(process.env.PORT, () =>
-      console.log(`✅ API running on http://localhost:${process.env.PORT}`)
-    );
+      console.log(`✅ API running on http://localhost:${process.env.PORT}`),
+    )
   })
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+  .catch((err) => console.error('❌ MongoDB connection error:', err))

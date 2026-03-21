@@ -12,8 +12,7 @@
     </div>
   </div>
   <div class="search-wrapper">
-      <SearchBar class="mobile-only-search" @search="handleSearch" />
-
+    <SearchBar class="mobile-only-search" @search="handleSearch" />
   </div>
 
   <div>

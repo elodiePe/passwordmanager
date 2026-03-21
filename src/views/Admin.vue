@@ -8,7 +8,9 @@
       <input id="session-id" v-model="sessionInput" type="text" placeholder="default" />
       <button type="button" class="session-btn" @click="applySession">Use Session</button>
     </div>
-    <p class="session-current">Current session: <strong>{{ currentSession }}</strong></p>
+    <p class="session-current">
+      Current session: <strong>{{ currentSession }}</strong>
+    </p>
 
     <div class="admin-actions">
       <button type="button" class="manager-btn manager-a" @click="goToManager('A')">

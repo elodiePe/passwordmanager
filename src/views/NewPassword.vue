@@ -25,11 +25,7 @@
 
       <label>
         Link Key (for email linkage)
-        <input
-          v-model="credentialLinkKey"
-          type="text"
-          placeholder="e.g. github"
-        />
+        <input v-model="credentialLinkKey" type="text" placeholder="e.g. github" />
         <small>Used to match `linkedCredentialWebsite` in the email simulation.</small>
       </label>
 
@@ -44,13 +40,10 @@
       </label>
 
       <div class="button-group">
-           <button type="button" class="cancelBTN" @click="goBack">
-          Cancel
-        </button>
+        <button type="button" class="cancelBTN" @click="goBack">Cancel</button>
         <button type="submit" :disabled="loading">
           {{ loading ? 'Saving...' : 'Save' }}
         </button>
-     
       </div>
 
       <p v-if="error" class="error">{{ error }}</p>

@@ -186,11 +186,22 @@ const hasActiveChallengeGrant = () => {
   return false
 }
 
-const postCredentialCopyEvent = async (actionType, outcome, challengeDurationSeconds, challengeAttempts) => {
-  if (actionType !== 'copyPassword' && actionType !== 'copyUsername' && actionType !== 'togglePassword') return
+const postCredentialCopyEvent = async (
+  actionType,
+  outcome,
+  challengeDurationSeconds,
+  challengeAttempts,
+) => {
+  if (
+    actionType !== 'copyPassword' &&
+    actionType !== 'copyUsername' &&
+    actionType !== 'togglePassword'
+  )
+    return
 
   const completedAtMs = Date.now()
-  const requestedAtMs = typeof actionRequestedAtMs.value === 'number' ? actionRequestedAtMs.value : completedAtMs
+  const requestedAtMs =
+    typeof actionRequestedAtMs.value === 'number' ? actionRequestedAtMs.value : completedAtMs
   const durationMs = Math.max(0, completedAtMs - requestedAtMs)
   const durationSeconds = durationMs / 1000
 
@@ -201,8 +212,9 @@ const postCredentialCopyEvent = async (actionType, outcome, challengeDurationSec
     completedAtMs,
     durationMs,
     durationSeconds,
-    challengeDurationSeconds: typeof challengeDurationSeconds === 'number' ? challengeDurationSeconds : null,
-    challengeAttempts: typeof challengeAttempts === 'number' ? challengeAttempts : null
+    challengeDurationSeconds:
+      typeof challengeDurationSeconds === 'number' ? challengeDurationSeconds : null,
+    challengeAttempts: typeof challengeAttempts === 'number' ? challengeAttempts : null,
   })
 
   const payload = {
@@ -213,13 +225,14 @@ const postCredentialCopyEvent = async (actionType, outcome, challengeDurationSec
     accountId: props.accountId || null,
     actionType,
     challengeType: typeof challengeDurationSeconds === 'number' ? challengeType.value : null,
-    challengeDurationSeconds: typeof challengeDurationSeconds === 'number' ? challengeDurationSeconds : null,
+    challengeDurationSeconds:
+      typeof challengeDurationSeconds === 'number' ? challengeDurationSeconds : null,
     challengeAttempts: typeof challengeAttempts === 'number' ? challengeAttempts : null,
     requestedAtMs,
     completedAtMs,
     durationMs,
     durationSeconds,
-    outcome
+    outcome,
   }
 
   try {
@@ -227,7 +240,7 @@ const postCredentialCopyEvent = async (actionType, outcome, challengeDurationSec
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-      keepalive: true
+      keepalive: true,
     })
   } catch {
     // Ignore logging failures so user action is not blocked.
@@ -254,7 +267,7 @@ const saveChallengeEvent = (outcome) => {
     startedAtMs: challengeStartedAtMs.value,
     completedAtMs,
     durationMs,
-    durationSeconds
+    durationSeconds,
   }
 
   try {
@@ -275,7 +288,7 @@ const saveChallengeEvent = (outcome) => {
     durationMs,
     durationSeconds,
     challengeType: challengeType.value,
-    attempts: challengeAttemptCount.value
+    attempts: challengeAttemptCount.value,
   })
   return durationSeconds
 }
@@ -425,7 +438,7 @@ const confirmChallenge = async () => {
         action,
         result.success ? 'completed' : 'failed',
         challengeDurationSeconds,
-        challengeAttemptCount.value
+        challengeAttemptCount.value,
       )
     }
   }
@@ -435,8 +448,17 @@ const cancelChallenge = () => {
   const canceledAction = pendingAction.value
   const challengeDurationSeconds = saveChallengeEvent('canceled')
 
-  if (canceledAction === 'copyPassword' || canceledAction === 'copyUsername' || canceledAction === 'togglePassword') {
-    void postCredentialCopyEvent(canceledAction, 'canceled', challengeDurationSeconds, challengeAttemptCount.value)
+  if (
+    canceledAction === 'copyPassword' ||
+    canceledAction === 'copyUsername' ||
+    canceledAction === 'togglePassword'
+  ) {
+    void postCredentialCopyEvent(
+      canceledAction,
+      'canceled',
+      challengeDurationSeconds,
+      challengeAttemptCount.value,
+    )
   }
 
   showChallenge.value = false
@@ -455,7 +477,7 @@ watch(
   () => [props.accountId, props.accountCredentialLinkKey, props.accountWebsite],
   () => {
     challengeValidUntilMs.value = 0
-  }
+  },
 )
 </script>
 

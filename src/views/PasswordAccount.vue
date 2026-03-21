@@ -175,7 +175,7 @@ const flushPasswordPageSession = async (exitReason) => {
     accountId: account.value._id || String(route.params.accountId || ''),
     startedAtMs: pageOpenedAtMs.value,
     endedAtMs,
-    exitReason
+    exitReason,
   }
 
   try {
@@ -183,7 +183,7 @@ const flushPasswordPageSession = async (exitReason) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-      keepalive: true
+      keepalive: true,
     })
   } catch {
     // Ignore logging failures so user flow is never blocked.

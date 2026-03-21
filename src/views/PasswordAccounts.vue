@@ -16,19 +16,15 @@
           <p>{{ accounts[0]?.websiteUrl || 'No URL' }}</p>
         </div>
       </div>
-
-
     </header>
 
     <section class="accounts-list">
       <div class="section-header">
-      <h1 class="accounts-title">Accounts ({{ accounts.length }})</h1>
-      <router-link to="/newpassword" class="add-btn ">
-        <span class="material-symbols-rounded">add_2</span>
-        New account
-      </router-link>
-
-      
+        <h1 class="accounts-title">Accounts ({{ accounts.length }})</h1>
+        <router-link to="/newpassword" class="add-btn">
+          <span class="material-symbols-rounded">add_2</span>
+          New account
+        </router-link>
       </div>
       <account-card
         v-for="account in accounts"
