@@ -78,6 +78,14 @@
         </div>
       </template>
 
+      <template v-else-if="challengeType === 'timer'">
+        <p class="challenge-text">
+          Cyberattacks often succeed when people act too quickly, so take a short pause before
+          continuing.
+        </p>
+        <p class="challenge-text timer-countdown">Continue available in {{ timerSecondsLeft }}s</p>
+      </template>
+
       <template v-else>
         <p class="challenge-text">
           Attackers often use lookalike domains (typosquatting) in phishing messages. Select the
@@ -94,14 +102,21 @@
       <p v-if="challengeError" class="challenge-error">{{ challengeError }}</p>
 
       <div class="challenge-actions">
-        <button class="btn-confirm" type="button" @click="confirmChallenge">Confirm</button>
+        <button
+          class="btn-confirm"
+          type="button"
+          :disabled="isTimerConfirmDisabled"
+          @click="confirmChallenge"
+        >
+          {{ confirmButtonLabel }}
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { getCurrentSessionId } from '../composables/useSession'
 
 const props = defineProps({
@@ -134,8 +149,9 @@ const props = defineProps({
 const emit = defineEmits(['copied'])
 
 const REQUIRED_TEXT = 'I am not being scammed'
-const CHALLENGE_TYPES = ['text', 'slider', 'domain']
+const CHALLENGE_TYPES = ['text', 'slider', 'timer', 'domain']
 const SLIDER_TOLERANCE = 2
+const TIMER_WAIT_SECONDS = 5
 const CHALLENGE_INDEX_STORAGE_KEY = 'pm.challenge.index'
 const CHALLENGE_VALIDITY_MS = 5 * 60 * 1000
 const PM_FRICTION_LOG_KEY_PREFIX = 'pm-positive-friction-log'
@@ -168,12 +184,47 @@ const sliderTarget = ref(50)
 
 const selectedDomain = ref('')
 const domainOptions = ref([])
+const timerSecondsLeft = ref(0)
 
 const pendingAction = ref(null)
 const challengeStartedAtMs = ref(null)
 const actionRequestedAtMs = ref(null)
 const challengeAttemptCount = ref(0)
 const challengeValidUntilMs = ref(0)
+let timerIntervalId = null
+
+const isTimerConfirmDisabled = computed(
+  () => challengeType.value === 'timer' && timerSecondsLeft.value > 0,
+)
+
+const confirmButtonLabel = computed(() => {
+  if (challengeType.value === 'timer' && timerSecondsLeft.value > 0) {
+    return `Continue (${timerSecondsLeft.value}s)`
+  }
+  return 'Continue'
+})
+
+const stopTimerChallenge = () => {
+  if (timerIntervalId !== null) {
+    window.clearInterval(timerIntervalId)
+    timerIntervalId = null
+  }
+}
+
+const startTimerChallenge = () => {
+  stopTimerChallenge()
+  timerSecondsLeft.value = TIMER_WAIT_SECONDS
+
+  timerIntervalId = window.setInterval(() => {
+    if (timerSecondsLeft.value <= 1) {
+      timerSecondsLeft.value = 0
+      stopTimerChallenge()
+      return
+    }
+
+    timerSecondsLeft.value -= 1
+  }, 1000)
+}
 
 const hasActiveChallengeGrant = () => {
   const now = Date.now()
@@ -311,6 +362,7 @@ const buildDomainChallenge = () => {
 }
 
 const pickNextChallenge = () => {
+  stopTimerChallenge()
   challengeType.value = CHALLENGE_TYPES[challengeIndex.value]
   challengeIndex.value = (challengeIndex.value + 1) % CHALLENGE_TYPES.length
   saveChallengeIndex(challengeIndex.value)
@@ -323,6 +375,8 @@ const pickNextChallenge = () => {
 
   if (challengeType.value === 'slider') {
     sliderTarget.value = 83 // Based on the phishing stat mentioned in the challenge text
+  } else if (challengeType.value === 'timer') {
+    startTimerChallenge()
   } else if (challengeType.value === 'domain') {
     buildDomainChallenge()
   }
@@ -412,6 +466,11 @@ const confirmChallenge = async () => {
       challengeError.value = `Slider is not at ${sliderTarget.value}.`
       return
     }
+  } else if (challengeType.value === 'timer') {
+    if (timerSecondsLeft.value > 0) {
+      challengeError.value = `Please wait ${timerSecondsLeft.value} second(s) before continuing.`
+      return
+    }
   } else {
     if (selectedDomain.value !== OFFICIAL_DOMAIN) {
       challengeError.value = 'Incorrect domain selected.'
@@ -421,6 +480,7 @@ const confirmChallenge = async () => {
 
   showChallenge.value = false
   challengeError.value = ''
+  stopTimerChallenge()
   const challengeDurationSeconds = saveChallengeEvent('completed')
   challengeValidUntilMs.value = Date.now() + CHALLENGE_VALIDITY_MS
 
@@ -428,6 +488,7 @@ const confirmChallenge = async () => {
   pendingAction.value = null
   challengeInput.value = ''
   sliderValue.value = 0
+  timerSecondsLeft.value = 0
   selectedDomain.value = ''
   domainOptions.value = []
 
@@ -447,6 +508,7 @@ const confirmChallenge = async () => {
 const cancelChallenge = () => {
   const canceledAction = pendingAction.value
   const challengeDurationSeconds = saveChallengeEvent('canceled')
+  stopTimerChallenge()
 
   if (
     canceledAction === 'copyPassword' ||
@@ -465,11 +527,16 @@ const cancelChallenge = () => {
   challengeInput.value = ''
   challengeError.value = ''
   sliderValue.value = 0
+  timerSecondsLeft.value = 0
   selectedDomain.value = ''
   domainOptions.value = []
   challengeAttemptCount.value = 0
   pendingAction.value = null
 }
+
+onBeforeUnmount(() => {
+  stopTimerChallenge()
+})
 
 // Challenge validity is bound to the currently viewed password entry.
 // Switching account context forces a new challenge even within 5 minutes.
@@ -651,6 +718,11 @@ watch(
   color: #444;
 }
 
+.timer-countdown {
+  margin-top: 0.75rem;
+  font-weight: 600;
+}
+
 .challenge-error {
   margin: 0.75rem 0 0;
   padding: 0.75rem;
@@ -683,6 +755,11 @@ watch(
 .btn-confirm {
   background: #1d3353;
   color: #fff;
+}
+
+.btn-confirm:disabled {
+  background: #8d97a8;
+  cursor: not-allowed;
 }
 
 .btn-cancel {
