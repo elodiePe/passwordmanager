@@ -1,19 +1,30 @@
 <script setup>
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import Navigation from './components/navigation.vue'
 import HeaderLogo from './components/headerlogo.vue'
 import SearchBar from './components/search-bar.vue'
 import { setCurrentSessionId, getCurrentSessionId } from './composables/useSession'
+import { isAuthenticated, logout } from './composables/useAuth'
+
+const route = useRoute()
+const showSignOut = computed(() => route.path !== '/login' && isAuthenticated())
 
 onMounted(() => {
   // Keep a normalized shared session id available across apps.
   setCurrentSessionId(getCurrentSessionId())
 })
+
+function signOut() {
+  logout()
+  window.location.assign('#/login')
+}
 </script>
 
 <template>
   <HeaderLogo />
   <!-- <Navigation /> -->
+  <button v-if="showSignOut" class="signout-btn" @click="signOut">Sign out</button>
 
   <main class="main-content">
     <router-view />
@@ -37,6 +48,19 @@ body {
   padding: 1rem;
   max-width: 100%;
   box-sizing: border-box;
+}
+
+.signout-btn {
+  position: fixed;
+  top: 1.5rem;
+  right: 1rem;
+  z-index: 1100;
+  border: 1px solid var(--color-border-input-alt);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border-radius: 0.45rem;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
 }
 
 @media (max-width: 480px) {
