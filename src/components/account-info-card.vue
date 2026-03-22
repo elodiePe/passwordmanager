@@ -59,8 +59,8 @@
         <p class="challenge-text">
           Did you know that phishing is the most commom form of cyber crime, with an estimated 3.4
           billion span emails sent daily? <br /><br />
-          83% of UK businesses that suffered a cyber attack in 2022 reported the attack type as
-          phishing. <br /><br />
+          <!-- 83% of UK businesses that suffered a cyber attack in 2022 reported the attack type as
+          phishing. <br /><br /> -->
           To continue, move the slide to {{ sliderTarget }}.
         </p>
         <input
