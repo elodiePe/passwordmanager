@@ -17,7 +17,11 @@
       :to="{ path: '/passwords', query: { group: group.name } }"
     >
       <div class="group-card-main">
-        <img :src="group.logo || 'https://via.placeholder.com/60'" :alt="`${group.name} logo`" class="group-logo" />
+        <img
+          :src="group.logo || 'https://via.placeholder.com/60'"
+          :alt="`${group.name} logo`"
+          class="group-logo"
+        />
         <div class="group-text">
           <h2 class="group-name">{{ group.name }}</h2>
           <p class="group-count">{{ group.count }} password(s)</p>
@@ -184,7 +188,7 @@ onMounted(async () => {
 }
 
 .material-symbols-rounded {
-   width: 1.375rem;
+  width: 1.375rem;
   height: 1.375rem;
   aspect-ratio: 1/1;
 }

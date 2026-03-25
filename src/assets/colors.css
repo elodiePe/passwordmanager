@@ -11,16 +11,16 @@
   --logo-size: 3rem;
 
   /* ── Brand / Primary ─────────────────────────────────── */
-  --color-primary: #1d3353;; /* nav active, buttons, titles, links    */
+  --color-primary: #1d3353; /* nav active, buttons, titles, links    */
   --color-primary-hovered: #848586; /* nav active hover, button hover       */
   --color-primary-on: #ffffff; /* text / icons on primary background    */
 
   /* ── Page & Surface backgrounds ─────────────────────── */
   --color-bg: #280003; /* app-level background (header, nav)    */
-  --color-surface: #EEE0CB; /* pure white (inputs, challenge box)    */
+  --color-surface: #eee0cb; /* pure white (inputs, challenge box)    */
   --color-card: #fef0f0; /* account-card & account-info-card      */
   --color-card-password: #fff5ef; /* password-card background              */
-  --color-card-hovered: #EEE0CB; /* password-card img-title background    */
+  --color-card-hovered: #eee0cb; /* password-card img-title background    */
   --color-form-bg: #fff7f7; /* form / edit-form background           */
 
   /* ── Text ────────────────────────────────────────────── */
@@ -43,7 +43,7 @@
   --color-input-focus-ring: rgba(29, 51, 83, 0.15); /* input focus shadow     */
 
   /* ── Feedback: Danger / Error ────────────────────────── */
-  --color-danger: #C2847A;
+  --color-danger: #c2847a;
   --color-danger-hovered: #a63434; /* delete/cancel buttons, error text     */
   --color-danger-on: #ffffff; /* text on danger background             */
   --color-danger-bg: #ffebee; /* error message background              */

@@ -10,7 +10,7 @@
 </template>
 
 <script>
-import '../assets/colors.css';
+import '../assets/colors.css'
 export default {
   props: {
     title: {
@@ -36,7 +36,7 @@ export default {
   align-items: center;
   gap: 0.5rem;
   border-radius: 0.3125rem;
-  background:  var(--color-card-password);
+  background: var(--color-card-password);
   box-shadow: 0 5px 6px 0 rgba(0, 0, 0, 0.25);
   justify-content: space-between;
   text-decoration: none;
@@ -71,7 +71,7 @@ export default {
   color: var(--color-text-primary);
   font-family: Inter;
   font-size: 0.9375rem;
-  font-style:normal;
+  font-style: normal;
   font-weight: 600;
   line-height: normal;
 }
