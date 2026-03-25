@@ -168,19 +168,54 @@ app.post('/api/passwords', async (req, res) => {
 
 app.put('/api/passwords/:accountId', async (req, res) => {
   try {
+    const normalizedWebsiteUrl =
+      typeof req.body.websiteUrl === 'string' ? req.body.websiteUrl.trim() : undefined
+    const normalizedGroupName =
+      typeof req.body.groupName === 'string' ? req.body.groupName.trim() : undefined
+    const normalizedTitle = typeof req.body.title === 'string' ? req.body.title.trim() : undefined
+
     const updates = {
-      title: typeof req.body.title === 'string' ? req.body.title.trim() : undefined,
+      groupName: normalizedGroupName,
+      title: normalizedTitle,
+      websiteUrl: normalizedWebsiteUrl,
       username: req.body.username,
       password: req.body.password,
-      credentialLinkKey: normalizeLinkKey(req.body.credentialLinkKey),
+      credentialLinkKey:
+        typeof req.body.credentialLinkKey === 'string'
+          ? normalizeLinkKey(req.body.credentialLinkKey)
+          : undefined,
+      logo: typeof req.body.logo === 'string' || req.body.logo === null ? req.body.logo : undefined,
     }
 
-    if (typeof updates.title === 'undefined') {
+    if (!updates.groupName) {
+      delete updates.groupName
+    }
+
+    if (typeof updates.title === 'undefined' || !updates.title) {
       delete updates.title
     }
 
-    if (!updates.credentialLinkKey) {
+    if (typeof updates.websiteUrl === 'undefined' || !updates.websiteUrl) {
+      delete updates.websiteUrl
+    } else {
+      updates.website = extractWebsiteName(updates.websiteUrl)
+      updates.iconUrl = getFaviconUrl(updates.websiteUrl)
+    }
+
+    if (typeof updates.username === 'undefined') {
+      delete updates.username
+    }
+
+    if (typeof updates.password === 'undefined') {
+      delete updates.password
+    }
+
+    if (typeof updates.credentialLinkKey === 'undefined' || !updates.credentialLinkKey) {
       delete updates.credentialLinkKey
+    }
+
+    if (typeof updates.logo === 'undefined') {
+      delete updates.logo
     }
 
     const updated = await Password.findOneAndUpdate(

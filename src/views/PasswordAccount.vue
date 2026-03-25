@@ -60,8 +60,16 @@
 
   <form v-if="account && isEditing" class="edit-form" @submit.prevent="saveAccount">
     <label>
+      Group Name
+      <input v-model="formGroupName" type="text" required />
+    </label>
+    <label>
       Title
       <input v-model="formTitle" type="text" required />
+    </label>
+    <label>
+      Website URL
+      <input v-model="formWebsiteUrl" type="url" required />
     </label>
     <label>
       Username/Email
@@ -71,6 +79,23 @@
       Password
       <input v-model="formPassword" type="text" required />
     </label>
+    <label>
+      Link Key
+      <input v-model="formCredentialLinkKey" type="text" placeholder="e.g. github" />
+    </label>
+
+    <label>
+      Logo
+      <div class="image-input-wrapper">
+        <input type="file" accept="image/*" @change="handleEditImageUpload" />
+        <div v-if="formLogoPreview" class="logo-preview-container">
+          <img :src="formLogoPreview" alt="logo preview" class="logo-preview" />
+          <button type="button" @click="clearEditImage" class="clear-btn">x</button>
+        </div>
+        <p v-else class="placeholder-text">No image selected</p>
+      </div>
+    </label>
+
     <p v-if="formError" class="form-error">{{ formError }}</p>
     <div class="action-buttons">
       <button type="submit" class="btn btn-edit" :disabled="isSaving">
@@ -95,9 +120,14 @@ const account = ref(null)
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
 const isEditing = ref(false)
 const isSaving = ref(false)
+const formGroupName = ref('')
 const formTitle = ref('')
+const formWebsiteUrl = ref('')
 const formUsername = ref('')
 const formPassword = ref('')
+const formCredentialLinkKey = ref('')
+const formLogoPreview = ref('')
+const formLogoData = ref(null)
 const formError = ref('')
 const showMobileActions = ref(false)
 const mobileActionsRef = ref(null)
@@ -141,16 +171,38 @@ onMounted(async () => {
   try {
     const accountId = route.params.accountId
 
-    const res = await fetch(`${apiBase}/api/passwords/${accountId}`)
-    if (!res.ok) throw new Error('Failed to load account')
+    let payload = null
+    let res = await fetch(`${apiBase}/api/passwords/${accountId}`)
 
-    account.value = await res.json()
+    if (res.ok) {
+      payload = await res.json()
+    }
+
+    // Compatibility fallback for older deployed API shape: /api/passwords/:website/:accountId
+    if (!res.ok || Array.isArray(payload)) {
+      const website = String(route.query.website || '').trim()
+      if (website) {
+        const legacyRes = await fetch(`${apiBase}/api/passwords/${website}/${accountId}`)
+        if (legacyRes.ok) {
+          payload = await legacyRes.json()
+        }
+      }
+    }
+
+    const normalizedAccount = Array.isArray(payload) ? payload[0] || null : payload
+    account.value =
+      normalizedAccount && typeof normalizedAccount === 'object' ? normalizedAccount : null
 
     if (!account.value) throw new Error('Account not found')
 
     formTitle.value = account.value.title || ''
+    formGroupName.value = account.value.groupName || 'Other'
+    formWebsiteUrl.value = account.value.websiteUrl || ''
     formUsername.value = account.value.username || ''
     formPassword.value = account.value.password || ''
+    formCredentialLinkKey.value = account.value.credentialLinkKey || ''
+    formLogoPreview.value = account.value.logo || ''
+    formLogoData.value = account.value.logo || null
     pageOpenedAtMs.value = Date.now()
     pageSessionLogged.value = false
   } catch (error) {
@@ -227,11 +279,34 @@ const editAccount = () => {
 
 const cancelEdit = () => {
   if (!account.value) return
+  formGroupName.value = account.value.groupName || 'Other'
   formTitle.value = account.value.title || ''
+  formWebsiteUrl.value = account.value.websiteUrl || ''
   formUsername.value = account.value.username
   formPassword.value = account.value.password
+  formCredentialLinkKey.value = account.value.credentialLinkKey || ''
+  formLogoPreview.value = account.value.logo || ''
+  formLogoData.value = account.value.logo || null
   formError.value = ''
   isEditing.value = false
+}
+
+const handleEditImageUpload = (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    const result = e.target?.result || ''
+    formLogoPreview.value = result
+    formLogoData.value = result || null
+  }
+  reader.readAsDataURL(file)
+}
+
+const clearEditImage = () => {
+  formLogoPreview.value = ''
+  formLogoData.value = null
 }
 
 const saveAccount = async () => {
@@ -244,9 +319,13 @@ const saveAccount = async () => {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        groupName: formGroupName.value,
         title: formTitle.value,
+        websiteUrl: formWebsiteUrl.value,
         username: formUsername.value,
         password: formPassword.value,
+        credentialLinkKey: formCredentialLinkKey.value,
+        logo: formLogoData.value,
       }),
     })
 
@@ -384,6 +463,47 @@ a {
   border: 1px solid #e2dede;
   border-radius: 8px;
   background: #fff;
+}
+
+.image-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.logo-preview-container {
+  position: relative;
+  width: fit-content;
+}
+
+.logo-preview {
+  width: var(--logo-size);
+  height: var(--logo-size);
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.clear-btn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 1.2rem;
+  height: 1.2rem;
+  border: none;
+  border-radius: 999px;
+  background: #b00020;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.placeholder-text {
+  margin: 0;
+  color: #666;
+  font-size: 0.85rem;
 }
 
 .edit-form input:focus {

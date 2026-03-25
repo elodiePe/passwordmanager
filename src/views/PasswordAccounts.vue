@@ -62,6 +62,7 @@ const buildAccountLink = (account) => ({
   path: `/passwords/${account._id}`,
   query: {
     group: selectedGroup.value || account.groupName || 'Other',
+    website: account.website || '',
   },
 })
 
