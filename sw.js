@@ -1,4 +1,4 @@
-const CACHE_NAME = 'passwordmanager-v2'
+const CACHE_NAME = 'passwordmanager-v3'
 const SW_BASE_PATH = self.location.pathname.replace(/sw\.js$/, '')
 const withBase = (path) => `${SW_BASE_PATH}${String(path).replace(/^\//, '')}`
 const urlsToCache = [withBase('/'), withBase('/index.html'), withBase('/manifest.json')]
@@ -64,6 +64,29 @@ self.addEventListener('fetch', (event) => {
         .catch(() => {
           return caches.match(withBase('/index.html'))
         }),
+    )
+    return
+  }
+
+  const isStaticAsset =
+    request.destination === 'script' ||
+    request.destination === 'style' ||
+    /\.(js|css)$/.test(url.pathname)
+
+  // Network-first for JS/CSS to avoid stale bundles after redeploy.
+  if (isStaticAsset) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const responseToCache = response.clone()
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseToCache)
+            })
+          }
+          return response
+        })
+        .catch(() => caches.match(request)),
     )
     return
   }
