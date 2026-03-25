@@ -5,81 +5,83 @@
         <span class="material-symbols-rounded">arrow_back</span>
       </router-link>
       <div class="header-info">
-        <img
-          v-if="accounts[0]?.iconUrl"
-          :src="accounts[0].iconUrl"
-          alt="icon"
-          class="website-icon"
-        />
+        <div v-if="visibleAccounts[0]?.logo" class="logo-container">
+          <img :src="visibleAccounts[0].logo" alt="logo" class="group-logo" />
+        </div>
         <div class="info_website">
-          <h1>{{ websiteName }}</h1>
-          <p>{{ accounts[0]?.websiteUrl || 'No URL' }}</p>
+          <h1>{{ pageTitle }}</h1>
+          <p>{{ visibleAccounts.length }} password(s)</p>
         </div>
       </div>
     </header>
 
     <section class="accounts-list">
       <div class="section-header">
-        <h1 class="accounts-title">Accounts ({{ accounts.length }})</h1>
+        <h1 class="accounts-title">Passwords ({{ visibleAccounts.length }})</h1>
         <router-link to="/newpassword" class="add-btn">
           <span class="material-symbols-rounded">add_2</span>
-          New account
+          New password
         </router-link>
       </div>
-      <account-card
-        v-for="account in accounts"
+
+      <PasswordCard
+        v-for="account in visibleAccounts"
         :key="account._id"
-        :account_name="account.username"
-        :link="`/passwords/${websiteName}/${account._id}`"
+        :title="account.title || account.username"
+        :imageSrc="account.logo || 'https://via.placeholder.com/60'"
+        :link="buildAccountLink(account)"
       />
     </section>
   </main>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import AccountCard from '@/components/account-card.vue'
+import { ref, onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
+import PasswordCard from '@/components/password-card.vue'
 
 const route = useRoute()
-const router = useRouter()
 const accounts = ref([])
-const showPassword = ref({})
-const showMobileActions = ref(false)
-const mobileActionsRef = ref(null)
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
 
-const websiteName = computed(() => route.params.website || 'Accounts')
+const selectedGroup = computed(() => String(route.query.group || '').trim())
+
+const pageTitle = computed(() => {
+  if (selectedGroup.value) return `${selectedGroup.value}`
+  return 'All passwords'
+})
+
+const visibleAccounts = computed(() => {
+  if (!selectedGroup.value) return accounts.value
+  return accounts.value.filter(
+    (password) => (password.groupName || 'Other') === selectedGroup.value,
+  )
+})
+
+const buildAccountLink = (account) => ({
+  path: `/passwords/${account._id}`,
+  query: {
+    group: selectedGroup.value || account.groupName || 'Other',
+  },
+})
+
+const normalizePasswordList = (payload) => {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.data)) return payload.data
+  if (Array.isArray(payload?.items)) return payload.items
+  return []
+}
 
 onMounted(async () => {
-  const res = await fetch(`${apiBase}/api/passwords/${route.params.website}`)
-  accounts.value = await res.json()
-
-  document.addEventListener('click', handleDocumentClick)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleDocumentClick)
-})
-
-const handleDocumentClick = (event) => {
-  if (!mobileActionsRef.value) return
-  if (!mobileActionsRef.value.contains(event.target)) {
-    showMobileActions.value = false
+  try {
+    const res = await fetch(`${apiBase}/api/passwords`)
+    const allPasswords = await res.json()
+    accounts.value = normalizePasswordList(allPasswords)
+  } catch (error) {
+    console.error('Failed to fetch passwords:', error)
+    accounts.value = []
   }
-}
-
-const toggleMobileActions = () => {
-  showMobileActions.value = !showMobileActions.value
-}
-
-const closeMobileActions = () => {
-  showMobileActions.value = false
-}
-
-const togglePassword = (id) => {
-  showPassword.value[id] = !showPassword.value[id]
-}
+})
 </script>
 
 <style scoped>
@@ -110,6 +112,21 @@ header {
   font-size: 1.5rem;
   margin: 0;
 }
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.group-logo {
+  width: var(--logo-size);
+  height: var(--logo-size);
+  border-radius: 8px;
+  object-fit: cover;
+  /* border: 1px solid #e0e0e0; */
+}
 .back-btn {
   text-decoration: none;
   color: #333;
@@ -122,8 +139,8 @@ header {
 }
 
 .website-icon {
-  width: 48px;
-  height: 48px;
+  width: var(--logo-size);
+  height: var(--logo-size);
   border-radius: 8px;
 }
 .section-header {

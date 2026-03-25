@@ -1,12 +1,12 @@
 <template>
   <header>
-    <router-link :to="`/passwords/${account?.website}`" class="back-btn">
+    <router-link :to="backToListLink" class="back-btn">
       <span class="material-symbols-rounded">arrow_back</span>
     </router-link>
     <div class="header-info">
-      <img v-if="account?.iconUrl" :src="account.iconUrl" alt="icon" class="website-icon" />
+      <img v-if="account?.logo" :src="account.logo" alt="icon" class="website-icon" />
       <div class="info_website">
-        <h1>{{ account?.website }}</h1>
+        <h1>{{ account?.title || 'Account' }}</h1>
         <a
           v-if="account?.websiteUrl"
           :href="account.websiteUrl"
@@ -60,6 +60,10 @@
 
   <form v-if="account && isEditing" class="edit-form" @submit.prevent="saveAccount">
     <label>
+      Title
+      <input v-model="formTitle" type="text" required />
+    </label>
+    <label>
       Username/Email
       <input v-model="formUsername" type="text" required />
     </label>
@@ -80,7 +84,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AccountInfoCard from '@/components/account-info-card.vue'
 import { getCurrentSessionId } from '../composables/useSession'
@@ -91,6 +95,7 @@ const account = ref(null)
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
 const isEditing = ref(false)
 const isSaving = ref(false)
+const formTitle = ref('')
 const formUsername = ref('')
 const formPassword = ref('')
 const formError = ref('')
@@ -104,6 +109,12 @@ const isLoading = ref(true)
 const loadError = ref('')
 const pageOpenedAtMs = ref(null)
 const pageSessionLogged = ref(false)
+
+const backToListLink = computed(() => {
+  const group = String(route.query.group || account.value?.groupName || '').trim()
+  if (!group) return '/passwords'
+  return { path: '/passwords', query: { group } }
+})
 
 const handleCopied = () => {
   showCopiedMessage.value = true
@@ -128,19 +139,16 @@ onMounted(async () => {
   loadError.value = ''
 
   try {
-    const website = route.params.website
-    const accountParam = route.params.accountId || route.params.accountName
+    const accountId = route.params.accountId
 
-    const res = await fetch(`${apiBase}/api/passwords/${website}/${accountParam}`)
+    const res = await fetch(`${apiBase}/api/passwords/${accountId}`)
     if (!res.ok) throw new Error('Failed to load account')
 
-    const data = await res.json()
-
-    // Accept both API shapes: array or object
-    account.value = Array.isArray(data) ? data[0] || null : data || null
+    account.value = await res.json()
 
     if (!account.value) throw new Error('Account not found')
 
+    formTitle.value = account.value.title || ''
     formUsername.value = account.value.username || ''
     formPassword.value = account.value.password || ''
     pageOpenedAtMs.value = Date.now()
@@ -219,6 +227,7 @@ const editAccount = () => {
 
 const cancelEdit = () => {
   if (!account.value) return
+  formTitle.value = account.value.title || ''
   formUsername.value = account.value.username
   formPassword.value = account.value.password
   formError.value = ''
@@ -231,17 +240,15 @@ const saveAccount = async () => {
   formError.value = ''
 
   try {
-    const res = await fetch(
-      `${apiBase}/api/passwords/${account.value.website}/${account.value._id}`,
-      {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: formUsername.value,
-          password: formPassword.value,
-        }),
-      },
-    )
+    const res = await fetch(`${apiBase}/api/passwords/${account.value._id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: formTitle.value,
+        username: formUsername.value,
+        password: formPassword.value,
+      }),
+    })
 
     if (!res.ok) {
       throw new Error('Failed to update account')
@@ -259,13 +266,17 @@ const saveAccount = async () => {
 
 const deleteAccount = async () => {
   if (confirm('Are you sure you want to delete this account?')) {
-    const website = account.value.website
+    const groupName = String(route.query.group || account.value.groupName || '').trim()
     const accountId = account.value._id
-    const res = await fetch(`${apiBase}/api/passwords/${website}/${accountId}`, {
+    const res = await fetch(`${apiBase}/api/passwords/${accountId}`, {
       method: 'DELETE',
     })
     if (res.ok) {
-      router.push(`/passwords/${website}`)
+      if (groupName) {
+        router.push({ path: '/passwords', query: { group: groupName } })
+      } else {
+        router.push('/passwords')
+      }
     } else {
       alert('Failed to delete account')
     }
@@ -336,8 +347,11 @@ a {
 }
 
 .website-icon {
-  width: 48px;
-  height: 48px;
+  width: var(--logo-size);
+  height: var(--logo-size);
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  flex-shrink: 0;
   border-radius: 8px;
 }
 

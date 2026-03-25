@@ -37,13 +37,13 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/passwords/:website',
+      path: '/passwords',
       name: 'password-accounts',
       component: PasswordAccounts,
       meta: { requiresAuth: true },
     },
     {
-      path: '/passwords/:website/:accountId',
+      path: '/passwords/:accountId',
       name: 'password-account',
       component: PasswordAccount,
       meta: { requiresAuth: true },

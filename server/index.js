@@ -34,12 +34,15 @@ app.use(express.json())
 
 const PasswordSchema = new mongoose.Schema(
   {
+    title: { type: String, required: false },
+    groupName: { type: String, required: false, default: 'Other' },
     website: { type: String, required: true },
     credentialLinkKey: { type: String, required: false, index: true },
     websiteUrl: { type: String, required: true },
     username: { type: String, required: true },
     password: { type: String, required: true },
     iconUrl: { type: String, required: false },
+    logo: { type: String, required: false },
   },
   { timestamps: true },
 )
@@ -124,26 +127,14 @@ app.get('/api/passwords', async (req, res) => {
   }
 })
 
-// Get all accounts for a specific website
-app.get('/api/passwords/:website', async (req, res) => {
+// Get a single account by ID
+app.get('/api/passwords/:accountId', async (req, res) => {
   try {
-    const accounts = await Password.find({
-      website: req.params.website,
-    }).sort({ createdAt: -1 })
-    res.json(accounts)
-  } catch (error) {
-    res.status(500).json({ error: error.message })
-  }
-})
-
-// ID route (kept)
-app.get('/api/passwords/:website/:accountId', async (req, res) => {
-  try {
-    const accounts = await Password.find({
-      website: req.params.website,
-      _id: req.params.accountId,
-    }).sort({ createdAt: -1 })
-    res.json(accounts)
+    const account = await Password.findById(req.params.accountId)
+    if (!account) {
+      return res.status(404).json({ error: 'Account not found' })
+    }
+    res.json(account)
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -152,17 +143,22 @@ app.get('/api/passwords/:website/:accountId', async (req, res) => {
 app.post('/api/passwords', async (req, res) => {
   try {
     const website = extractWebsiteName(req.body.websiteUrl)
+    const normalizedTitle = String(req.body.title || '').trim()
+    const groupName = String(req.body.groupName || 'Other').trim()
     const credentialLinkKey =
       normalizeLinkKey(req.body.credentialLinkKey) || normalizeLinkKey(website)
     const iconUrl = getFaviconUrl(req.body.websiteUrl)
 
     const item = await Password.create({
+      title: normalizedTitle || website,
+      groupName,
       website,
       credentialLinkKey,
       websiteUrl: req.body.websiteUrl,
       username: req.body.username,
       password: req.body.password,
       iconUrl,
+      logo: req.body.logo || null,
     })
     res.status(201).json(item)
   } catch (error) {
@@ -170,12 +166,17 @@ app.post('/api/passwords', async (req, res) => {
   }
 })
 
-app.put('/api/passwords/:website/:accountId', async (req, res) => {
+app.put('/api/passwords/:accountId', async (req, res) => {
   try {
     const updates = {
+      title: typeof req.body.title === 'string' ? req.body.title.trim() : undefined,
       username: req.body.username,
       password: req.body.password,
       credentialLinkKey: normalizeLinkKey(req.body.credentialLinkKey),
+    }
+
+    if (typeof updates.title === 'undefined') {
+      delete updates.title
     }
 
     if (!updates.credentialLinkKey) {
@@ -183,7 +184,7 @@ app.put('/api/passwords/:website/:accountId', async (req, res) => {
     }
 
     const updated = await Password.findOneAndUpdate(
-      { _id: req.params.accountId, website: req.params.website },
+      { _id: req.params.accountId },
       { $set: updates },
       { new: true, runValidators: true },
     )
@@ -198,11 +199,10 @@ app.put('/api/passwords/:website/:accountId', async (req, res) => {
   }
 })
 
-app.delete('/api/passwords/:website/:accountId', async (req, res) => {
+app.delete('/api/passwords/:accountId', async (req, res) => {
   try {
     const deleted = await Password.findOneAndDelete({
       _id: req.params.accountId,
-      website: req.params.website,
     })
 
     if (!deleted) {

@@ -8,6 +8,8 @@
  */
 
 :root {
+  --logo-size: 3rem;
+
   /* ── Brand / Primary ─────────────────────────────────── */
   --color-primary: #1d3353;; /* nav active, buttons, titles, links    */
   --color-primary-hovered: #848586; /* nav active hover, button hover       */

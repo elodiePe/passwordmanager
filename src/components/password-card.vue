@@ -51,8 +51,10 @@ export default {
 }
 .password-card img {
   display: flex;
-  width: 3.75rem;
-  height: 3.75rem;
+  width: var(--logo-size);
+  height: var(--logo-size);
+  object-fit: cover;
+  flex-shrink: 0;
   justify-content: center;
   align-items: center;
   aspect-ratio: 1/1;

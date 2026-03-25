@@ -9,24 +9,18 @@
 
     <form @submit.prevent="save">
       <label>
-        Website URL
-        <div class="url-input">
-          <input
-            v-model="websiteUrl"
-            type="url"
-            placeholder="https://example.com"
-            @input="updateIcon"
-            required
-          />
-          <img v-if="iconPreview" :src="iconPreview" alt="icon" class="icon-preview" />
-        </div>
-        <small v-if="websiteName">Website: {{ websiteName }}</small>
+        Group Name
+        <input v-model="groupName" type="text" placeholder="e.g. Work, Personal" required />
       </label>
 
       <label>
-        Link Key (for email linkage)
-        <input v-model="credentialLinkKey" type="text" placeholder="e.g. github" />
-        <small>Used to match `linkedCredentialWebsite` in the email simulation.</small>
+        Name
+        <input v-model="title" type="text" placeholder="e.g. Work Github" required />
+      </label>
+
+      <label>
+        Website URL
+        <input v-model="websiteUrl" type="url" placeholder="https://example.com" required />
       </label>
 
       <label>
@@ -37,6 +31,24 @@
       <label>
         Password
         <input v-model="password" type="password" required />
+      </label>
+
+      <label>
+        Image
+        <div class="image-input-wrapper">
+          <input type="file" accept="image/*" @change="handleImageUpload" />
+          <div v-if="logoPreview" class="logo-preview-container">
+            <img :src="logoPreview" alt="logo preview" class="logo-preview" />
+            <button type="button" @click="clearImage" class="clear-btn">✕</button>
+          </div>
+          <p v-else class="placeholder-text">No image selected</p>
+        </div>
+      </label>
+
+      <label>
+        Link Key (for email linkage)
+        <input v-model="credentialLinkKey" type="text" placeholder="e.g. github" />
+        <small>Used to match `linkedCredentialWebsite` in the email simulation.</small>
       </label>
 
       <div class="button-group">
@@ -58,30 +70,21 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
+const groupName = ref('')
+const title = ref('')
 const username = ref('')
 const password = ref('')
 const websiteUrl = ref('')
-const iconPreview = ref('')
+const logoPreview = ref('')
+const logoFile = ref(null)
 const credentialLinkKey = ref('')
 const loading = ref(false)
 const error = ref('')
 const success = ref(false)
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
 
-const websiteName = computed(() => {
-  try {
-    if (websiteUrl.value) {
-      const hostname = new URL(websiteUrl.value).hostname
-      return hostname.replace(/^www\./, '').split('.')[0]
-    }
-    return ''
-  } catch {
-    return ''
-  }
-})
-
 const effectiveCredentialLinkKey = computed(() => {
-  const raw = credentialLinkKey.value || websiteName.value || ''
+  const raw = credentialLinkKey.value || title.value || ''
   return String(raw)
     .trim()
     .toLowerCase()
@@ -89,17 +92,21 @@ const effectiveCredentialLinkKey = computed(() => {
     .replace(/[^a-z0-9_-]/g, '')
 })
 
-const updateIcon = () => {
-  try {
-    if (websiteUrl.value) {
-      const url = new URL(websiteUrl.value)
-      iconPreview.value = `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=64`
-    } else {
-      iconPreview.value = ''
+const handleImageUpload = (event) => {
+  const file = event.target.files?.[0]
+  if (file) {
+    logoFile.value = file
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      logoPreview.value = e.target?.result || ''
     }
-  } catch {
-    iconPreview.value = ''
+    reader.readAsDataURL(file)
   }
+}
+
+const clearImage = () => {
+  logoFile.value = null
+  logoPreview.value = ''
 }
 
 const save = async () => {
@@ -108,24 +115,41 @@ const save = async () => {
   success.value = false
 
   try {
+    let logoData = null
+
+    if (logoFile.value) {
+      const reader = new FileReader()
+      logoData = await new Promise((resolve, reject) => {
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = reject
+        reader.readAsDataURL(logoFile.value)
+      })
+    }
+
     const res = await fetch(`${apiBase}/api/passwords`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        groupName: groupName.value,
+        title: title.value,
         websiteUrl: websiteUrl.value,
         credentialLinkKey: effectiveCredentialLinkKey.value,
         username: username.value,
         password: password.value,
+        logo: logoData,
       }),
     })
 
     if (!res.ok) throw new Error('Failed to save')
 
     success.value = true
+    groupName.value = ''
+    title.value = ''
     username.value = ''
     password.value = ''
     websiteUrl.value = ''
-    iconPreview.value = ''
+    logoPreview.value = ''
+    logoFile.value = null
     credentialLinkKey.value = ''
 
     setTimeout(() => router.push('/'), 1500)
@@ -217,6 +241,66 @@ input:focus {
   outline: none;
   border-color: #1d3353;
   box-shadow: 0 0 0 3px rgba(29, 51, 83, 0.15);
+}
+
+.image-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.image-input-wrapper input[type='file'] {
+  padding: 0.6rem 0.8rem;
+  font-size: 0.95rem;
+  border: 2px dashed #e2dede;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.image-input-wrapper input[type='file']:hover {
+  border-color: #1d3353;
+}
+
+.logo-preview-container {
+  position: relative;
+  width: fit-content;
+}
+
+.logo-preview {
+  width: 100px;
+  height: 100px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid #e2dede;
+}
+
+.clear-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 50%;
+  background: #b00020;
+  color: #fff;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+}
+
+.clear-btn:hover {
+  background: #8b0000;
+}
+
+.placeholder-text {
+  color: #999;
+  font-size: 0.9rem;
+  margin: 0;
 }
 
 button {
