@@ -118,6 +118,7 @@ const route = useRoute()
 const router = useRouter()
 const account = ref(null)
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
+const PM_PAGE_SESSION_LOG_KEY_PREFIX = 'pm-study-password-page-session'
 const isEditing = ref(false)
 const isSaving = ref(false)
 const formGroupName = ref('')
@@ -139,6 +140,20 @@ const isLoading = ref(true)
 const loadError = ref('')
 const pageOpenedAtMs = ref(null)
 const pageSessionLogged = ref(false)
+
+const appendLocalStudyEvent = (keyPrefix, sessionId, event) => {
+  if (!sessionId) return
+  const storageKey = `${keyPrefix}:${sessionId}`
+
+  try {
+    const existing = JSON.parse(window.localStorage.getItem(storageKey) || '[]')
+    const history = Array.isArray(existing) ? existing : []
+    history.push(event)
+    window.localStorage.setItem(storageKey, JSON.stringify(history))
+  } catch {
+    window.localStorage.setItem(storageKey, JSON.stringify([event]))
+  }
+}
 
 const backToListLink = computed(() => {
   const group = String(route.query.group || account.value?.groupName || '').trim()
@@ -237,6 +252,8 @@ const flushPasswordPageSession = async (exitReason) => {
     endedAtMs,
     exitReason,
   }
+
+  appendLocalStudyEvent(PM_PAGE_SESSION_LOG_KEY_PREFIX, payload.sessionId, payload)
 
   try {
     await fetch(`${apiBase}/api/study/password-page-session`, {

@@ -155,7 +155,22 @@ const TIMER_WAIT_SECONDS = 5
 const CHALLENGE_INDEX_STORAGE_KEY = 'pm.challenge.index'
 const CHALLENGE_VALIDITY_MS = 5 * 60 * 1000
 const PM_FRICTION_LOG_KEY_PREFIX = 'pm-positive-friction-log'
+const PM_CREDENTIAL_COPY_LOG_KEY_PREFIX = 'pm-study-credential-copy'
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
+
+const appendLocalStudyEvent = (keyPrefix, sessionId, event) => {
+  if (!sessionId) return
+  const storageKey = `${keyPrefix}:${sessionId}`
+
+  try {
+    const existing = JSON.parse(window.localStorage.getItem(storageKey) || '[]')
+    const history = Array.isArray(existing) ? existing : []
+    history.push(event)
+    window.localStorage.setItem(storageKey, JSON.stringify(history))
+  } catch {
+    window.localStorage.setItem(storageKey, JSON.stringify([event]))
+  }
+}
 
 const loadChallengeIndex = () => {
   if (typeof window === 'undefined') return 0
@@ -285,6 +300,8 @@ const postCredentialCopyEvent = async (
     durationSeconds,
     outcome,
   }
+
+  appendLocalStudyEvent(PM_CREDENTIAL_COPY_LOG_KEY_PREFIX, payload.sessionId, payload)
 
   try {
     await fetch(`${apiBase}/api/study/credential-copy`, {
