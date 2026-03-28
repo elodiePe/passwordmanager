@@ -1,4 +1,5 @@
 const AUTH_STORAGE_KEY = 'passwordManagerAuth'
+const CHALLENGE_RESET_STORAGE_KEY = 'pm.challenge.order.resetAt'
 
 // Update these credentials to change app access.
 const AUTH_USERNAME = 'admin'
@@ -13,6 +14,7 @@ export function login(username, password) {
 
   if (isValid) {
     localStorage.setItem(AUTH_STORAGE_KEY, 'true')
+    localStorage.setItem(CHALLENGE_RESET_STORAGE_KEY, String(Date.now()))
   }
 
   return isValid

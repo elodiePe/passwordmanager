@@ -19,6 +19,9 @@ onMounted(() => {
 })
 
 function signOut() {
+  const confirmed = window.confirm('Are you sure you want to sign out?')
+  if (!confirmed) return
+
   logout()
   window.location.assign('#/login')
 }
@@ -66,9 +69,9 @@ function exportStudyLogs() {
 <template>
   <HeaderLogo />
   <!-- <Navigation /> -->
-  <button v-if="showSignOut" class="export-study-btn" @click="exportStudyLogs">
+  <!-- <button v-if="showSignOut" class="export-study-btn" @click="exportStudyLogs">
     Export PM Logs
-  </button>
+  </button> -->
   <button v-if="showSignOut" class="signout-btn" @click="signOut">Sign out</button>
 
   <main class="main-content">

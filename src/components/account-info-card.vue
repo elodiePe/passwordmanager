@@ -44,13 +44,13 @@
           Never share your passwords or access any accounts on non-official websites, as scammers
           often impersonate legitimate services to steal your credentials.
           <br /><br />
-          To continue, type: I am not being scammed
+          To continue, type: {{ currentTextPrompt }}
         </p>
         <input
           v-model="challengeInput"
           type="text"
           class="challenge-input"
-          placeholder="Type: I am not being scammed"
+          :placeholder="`Type: ${currentTextPrompt}`"
         />
       </template>
 
@@ -80,16 +80,22 @@
 
       <template v-else-if="challengeType === 'timer'">
         <p class="challenge-text">
-          Cyberattacks often succeed when people act too quickly, so take a short pause before
-          continuing.
+          {{ currentTimerMessage }}
         </p>
         <p class="challenge-text timer-countdown">Continue available in {{ timerSecondsLeft }}s</p>
       </template>
 
-      <template v-else>
+      <template v-else-if="challengeType === 'robot'">
+        <p class="challenge-text">Confirm you are human before continuing.</p>
+        <label class="robot-checkbox">
+          <input v-model="robotConfirmed" type="checkbox" />
+          <span>{{ ROBOT_CHECK_TEXT }}</span>
+        </label>
+      </template>
+
+      <template v-else-if="challengeType === 'domain'">
         <p class="challenge-text">
-          Attackers often use lookalike domains (typosquatting) in phishing messages. Select the
-          official website domain:
+          {{ currentDomainQuestion }}
         </p>
         <div class="domain-options">
           <label v-for="option in domainOptions" :key="option" class="domain-option">
@@ -97,6 +103,10 @@
             <span>{{ option }}</span>
           </label>
         </div>
+      </template>
+
+      <template v-else>
+        <p class="challenge-text">Challenge is unavailable. Please close and try again.</p>
       </template>
 
       <p v-if="challengeError" class="challenge-error">{{ challengeError }}</p>
@@ -148,14 +158,13 @@ const props = defineProps({
 
 const emit = defineEmits(['copied'])
 
-const REQUIRED_TEXT = 'I am not being scammed'
-const CHALLENGE_TYPES = ['text', 'slider', 'timer', 'domain']
 const SLIDER_TOLERANCE = 2
 const TIMER_WAIT_SECONDS = 5
-const CHALLENGE_INDEX_STORAGE_KEY = 'pm.challenge.index'
 const CHALLENGE_VALIDITY_MS = 5 * 60 * 1000
 const PM_FRICTION_LOG_KEY_PREFIX = 'pm-positive-friction-log'
 const PM_CREDENTIAL_COPY_LOG_KEY_PREFIX = 'pm-study-credential-copy'
+const ROBOT_CHECK_TEXT = 'I am not a robot'
+const CHALLENGE_RESET_STORAGE_KEY = 'pm.challenge.order.resetAt'
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
 
 const appendLocalStudyEvent = (keyPrefix, sessionId, event) => {
@@ -172,34 +181,26 @@ const appendLocalStudyEvent = (keyPrefix, sessionId, event) => {
   }
 }
 
-const loadChallengeIndex = () => {
-  if (typeof window === 'undefined') return 0
-
-  const raw = window.sessionStorage.getItem(CHALLENGE_INDEX_STORAGE_KEY)
-  const parsed = Number.parseInt(raw ?? '', 10)
-
-  if (!Number.isInteger(parsed) || parsed < 0) return 0
-  return parsed % CHALLENGE_TYPES.length
-}
-
-const saveChallengeIndex = (index) => {
-  if (typeof window === 'undefined') return
-  window.sessionStorage.setItem(CHALLENGE_INDEX_STORAGE_KEY, String(index))
-}
-
 const isPasswordVisible = ref(false)
 
 const showChallenge = ref(false)
 const challengeType = ref('text')
-const challengeIndex = ref(loadChallengeIndex())
 const challengeInput = ref('')
 const challengeError = ref('')
 const sliderValue = ref(0)
 const sliderTarget = ref(50)
+const currentTextPrompt = ref('I am not being scammed')
 
 const selectedDomain = ref('')
 const domainOptions = ref([])
+const currentDomainQuestion = ref('')
+const currentDomainAnswer = ref('')
+const currentTimerMessage = ref('')
+const robotConfirmed = ref(false)
 const timerSecondsLeft = ref(0)
+const challengePlan = ref([])
+const challengePlanPosition = ref(0)
+const challengeResetToken = ref('')
 
 const pendingAction = ref(null)
 const challengeStartedAtMs = ref(null)
@@ -362,40 +363,141 @@ const saveChallengeEvent = (outcome) => {
 }
 
 const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5)
+const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min
+const pickUnique = (arr, count) => shuffle(arr).slice(0, Math.min(count, arr.length))
 
-const OFFICIAL_DOMAIN = 'accounts.google.com'
-const PHISHING_LOOKALIKES = [
-  'account-google.com',
-  'accounts-google.com',
-  'acc0unts.google.com',
-  'accounts.g00gle.com',
-  'google.accounts.security-login.com',
+const TEXT_PROMPTS = [
+  'I am not being scammed',
+  'I verify the website before signing in',
+  'I will check the URL before entering my password',
+  'I only sign in on official websites',
 ]
 
-const buildDomainChallenge = () => {
-  const fakePool = shuffle(PHISHING_LOOKALIKES).slice(0, 3)
-  domainOptions.value = shuffle([OFFICIAL_DOMAIN, ...fakePool])
+const TIMER_MESSAGES = [
+  'Cyberattacks often succeed when people act too quickly, so take a short pause before continuing.',
+  'Scammers create urgency to force mistakes. Pause, review, and only then continue.',
+]
+
+const DOMAIN_QUESTIONS = [
+  {
+    prompt:
+      'Attackers often use lookalike domains (typosquatting) in phishing messages. Select the official Google account domain:',
+    correct: 'accounts.google.com',
+    lookalikes: [
+      'account-google.com',
+      'accounts-google.com',
+      'acc0unts.google.com',
+      'accounts.g00gle.com',
+      'google.accounts.security-login.com',
+    ],
+  },
+  {
+    prompt:
+      'A fake email says your account is locked. Select the official Microsoft sign-in domain:',
+    correct: 'login.microsoftonline.com',
+    lookalikes: [
+      'login-microsoftonline.com',
+      'login.micros0ftonline.com',
+      'microsoftonline.verify-login.com',
+      'microsoft-online-login.com',
+      'secure.microsoftonIine.com',
+    ],
+  },
+  {
+    prompt: 'Select the official Apple ID sign-in domain:',
+    correct: 'appleid.apple.com',
+    lookalikes: [
+      'apple-id.apple.com.security-login.com',
+      'appleid-appple.com',
+      'appleid.apple-login.com',
+      'appleid.verify-account-login.com',
+      'appleld.apple.com',
+    ],
+  },
+]
+
+const ensureChallengePlan = () => {
+  if (challengePlanPosition.value < challengePlan.value.length) return
+
+  const text1 = TEXT_PROMPTS[0]
+  const text2 = TEXT_PROMPTS[1] || TEXT_PROMPTS[0]
+  const question1 = DOMAIN_QUESTIONS[0]
+  const question2 = DOMAIN_QUESTIONS[1] || DOMAIN_QUESTIONS[0]
+  const timer1 = TIMER_MESSAGES[0]
+  const timer2 = TIMER_MESSAGES[1] || TIMER_MESSAGES[0]
+
+  // Fixed 11-step order requested by user.
+  challengePlan.value = [
+    { type: 'slider' },
+    { type: 'text', prompt: text1 },
+    { type: 'domain', question: question1 },
+    { type: 'timer', message: timer1 },
+    { type: 'robot' },
+    { type: 'slider' },
+    { type: 'text', prompt: text2 },
+    { type: 'domain', question: question2 },
+    { type: 'timer', message: timer2 },
+    { type: 'robot' },
+  ]
+  challengePlanPosition.value = 0
+}
+
+const getChallengeResetToken = () => {
+  if (typeof window === 'undefined') return ''
+  return window.localStorage.getItem(CHALLENGE_RESET_STORAGE_KEY) || ''
+}
+
+const syncChallengePlanWithLogin = () => {
+  const nextToken = getChallengeResetToken()
+
+  if (challengeResetToken.value === '') {
+    challengeResetToken.value = nextToken
+    return
+  }
+
+  if (nextToken !== challengeResetToken.value) {
+    challengeResetToken.value = nextToken
+    challengePlan.value = []
+    challengePlanPosition.value = 0
+    challengeValidUntilMs.value = 0
+  }
+}
+
+const buildDomainChallenge = (selectedQuestion) => {
+  if (!selectedQuestion) return
+
+  const fakePool = shuffle(selectedQuestion.lookalikes).slice(0, 3)
+  currentDomainQuestion.value = selectedQuestion.prompt
+  currentDomainAnswer.value = selectedQuestion.correct
+  domainOptions.value = shuffle([selectedQuestion.correct, ...fakePool])
   selectedDomain.value = ''
 }
 
 const pickNextChallenge = () => {
+  ensureChallengePlan()
+  const planItem = challengePlan.value[challengePlanPosition.value]
+  if (!planItem) return
+
   stopTimerChallenge()
-  challengeType.value = CHALLENGE_TYPES[challengeIndex.value]
-  challengeIndex.value = (challengeIndex.value + 1) % CHALLENGE_TYPES.length
-  saveChallengeIndex(challengeIndex.value)
+  challengeType.value = planItem.type
+  challengePlanPosition.value += 1
   challengeInput.value = ''
   challengeError.value = ''
   challengeAttemptCount.value = 0
   sliderValue.value = 0
   selectedDomain.value = ''
   domainOptions.value = []
+  robotConfirmed.value = false
 
-  if (challengeType.value === 'slider') {
-    sliderTarget.value = 83 // Based on the phishing stat mentioned in the challenge text
+  if (challengeType.value === 'text') {
+    currentTextPrompt.value = planItem.prompt || TEXT_PROMPTS[0]
+  } else if (challengeType.value === 'slider') {
+    sliderTarget.value = randomInt(10, 90)
   } else if (challengeType.value === 'timer') {
+    currentTimerMessage.value = planItem.message || TIMER_MESSAGES[0]
     startTimerChallenge()
   } else if (challengeType.value === 'domain') {
-    buildDomainChallenge()
+    buildDomainChallenge(planItem.question)
   }
 }
 
@@ -430,6 +532,7 @@ const runAction = async (action) => {
 }
 
 const requestSensitiveAction = async (action) => {
+  syncChallengePlanWithLogin()
   actionRequestedAtMs.value = Date.now()
 
   if (action === 'copyUsername') {
@@ -474,7 +577,7 @@ const confirmChallenge = async () => {
   challengeAttemptCount.value += 1
 
   if (challengeType.value === 'text') {
-    if (challengeInput.value.trim() !== REQUIRED_TEXT) {
+    if (challengeInput.value.trim() !== currentTextPrompt.value) {
       challengeError.value = 'Text does not match.'
       return
     }
@@ -488,8 +591,13 @@ const confirmChallenge = async () => {
       challengeError.value = `Please wait ${timerSecondsLeft.value} second(s) before continuing.`
       return
     }
+  } else if (challengeType.value === 'robot') {
+    if (!robotConfirmed.value) {
+      challengeError.value = 'Please confirm the checkbox to continue.'
+      return
+    }
   } else {
-    if (selectedDomain.value !== OFFICIAL_DOMAIN) {
+    if (selectedDomain.value !== currentDomainAnswer.value) {
       challengeError.value = 'Incorrect domain selected.'
       return
     }
@@ -508,6 +616,7 @@ const confirmChallenge = async () => {
   timerSecondsLeft.value = 0
   selectedDomain.value = ''
   domainOptions.value = []
+  robotConfirmed.value = false
 
   if (action) {
     const result = await runAction(action)
@@ -547,6 +656,7 @@ const cancelChallenge = () => {
   timerSecondsLeft.value = 0
   selectedDomain.value = ''
   domainOptions.value = []
+  robotConfirmed.value = false
   challengeAttemptCount.value = 0
   pendingAction.value = null
 }
@@ -720,6 +830,21 @@ watch(
   border-radius: 6px;
   border: 1px solid #ccc;
   font-size: 1rem;
+}
+
+.robot-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  font-family: Inter;
+  font-size: 0.95rem;
+}
+
+.robot-checkbox input[type='checkbox'] {
+  width: 1.05rem;
+  height: 1.05rem;
+  cursor: pointer;
 }
 
 .challenge-slider {

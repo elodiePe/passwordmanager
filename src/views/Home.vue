@@ -188,8 +188,8 @@ onMounted(async () => {
 }
 
 .material-symbols-rounded {
-  width: 1.375rem;
-  height: 1.375rem;
+  width: 1.5rem;
+  height: 1.5rem;
   aspect-ratio: 1/1;
 }
 

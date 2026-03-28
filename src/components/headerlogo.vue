@@ -1,12 +1,12 @@
 <template>
-<div class="navigation">
-    <img src="../assets/logo.svg" alt="Logo">
-
-</div>
-    </template> 
+  <div class="navigation">
+    <RouterLink to="/" class="logo-link" aria-label="Go to home page">
+      <img src="../assets/logo.svg" alt="Logo" />
+    </RouterLink>
+  </div>
+</template>
 <script setup>
 import '../assets/colors.css'
-
 </script>
 
 <style scoped>
@@ -24,13 +24,18 @@ import '../assets/colors.css'
   z-index: 1000;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   margin-bottom: 80px;
-  
 }
 
 .navigation img {
   height: 60px;
   width: auto;
   max-width: 100%;
+}
+
+.logo-link {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
 }
 
 @media (max-width: 480px) {
