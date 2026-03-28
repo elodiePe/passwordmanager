@@ -13,10 +13,6 @@ npm install \\ first tim
 npm run dev
 ```
 
-## Account connection information
-username: admin
-password: manager123
-
 ## admin section
 go to \admin to choose between password manager A or B
 To connect with the mailbox use the same session identification
