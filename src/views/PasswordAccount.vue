@@ -38,7 +38,11 @@
         aria-label="Open account actions"
         @click="toggleMobileActions"
       >
-        <span class="material-symbols-rounded">more_vert</span>
+        <img
+          src="@/assets/icons/more_vert_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg"
+          alt="More actions"
+          class="icon"
+        />
       </button>
       <div v-if="showMobileActions" class="mobile-menu">
         <button @click="handleEditAction" class="btn btn-edit" type="button">Edit</button>
@@ -119,6 +123,7 @@ const router = useRouter()
 const account = ref(null)
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
 const PM_PAGE_SESSION_LOG_KEY_PREFIX = 'pm-study-password-page-session'
+const ACTION_PIN_CODE = '2324'
 const isEditing = ref(false)
 const isSaving = ref(false)
 const formGroupName = ref('')
@@ -278,13 +283,27 @@ const toggleMobileActions = () => {
   showMobileActions.value = !showMobileActions.value
 }
 
+const requestActionPin = (actionLabel) => {
+  const enteredPin = window.prompt(`Enter PIN to ${actionLabel}:`)
+  if (enteredPin === null) return false
+
+  if (String(enteredPin).trim() !== ACTION_PIN_CODE) {
+    window.alert('Incorrect PIN.')
+    return false
+  }
+
+  return true
+}
+
 const handleEditAction = () => {
   showMobileActions.value = false
+  if (!requestActionPin('edit this password')) return
   editAccount()
 }
 
 const handleDeleteAction = () => {
   showMobileActions.value = false
+  if (!requestActionPin('delete this password')) return
   deleteAccount()
 }
 

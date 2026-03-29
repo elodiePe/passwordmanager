@@ -85,12 +85,31 @@
         <p class="challenge-text timer-countdown">Continue available in {{ timerSecondsLeft }}s</p>
       </template>
 
-      <template v-else-if="challengeType === 'robot'">
-        <p class="challenge-text">Confirm you are human before continuing.</p>
-        <label class="robot-checkbox">
-          <input v-model="robotConfirmed" type="checkbox" />
-          <span>{{ ROBOT_CHECK_TEXT }}</span>
-        </label>
+      <template v-else-if="challengeType === 'phrase'">
+        <p class="challenge-text">
+          Tap the words in the correct order: {{ currentPhraseTargetWords.join(' ') }}
+        </p>
+        <div class="phrase-selected">
+          <span v-if="selectedPhraseWords.length === 0" class="phrase-placeholder"
+            >No words selected yet</span
+          >
+          <span v-else>{{ selectedPhraseWords.join(' ') }}</span>
+        </div>
+        <div class="phrase-bank">
+          <button
+            v-for="(word, index) in phraseWordBank"
+            :key="`${word}-${index}`"
+            type="button"
+            class="phrase-word"
+            @click="selectPhraseWord(index)"
+          >
+            {{ word }}
+          </button>
+        </div>
+        <div class="phrase-controls">
+          <button type="button" class="btn-secondary" @click="undoPhraseWord">Undo</button>
+          <button type="button" class="btn-secondary" @click="clearPhraseSelection">Clear</button>
+        </div>
       </template>
 
       <template v-else-if="challengeType === 'domain'">
@@ -126,8 +145,9 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { getCurrentSessionId } from '../composables/useSession'
+import { useGlobalChallenge } from '../composables/useGlobalChallenge'
 
 const props = defineProps({
   account_name: {
@@ -160,11 +180,8 @@ const emit = defineEmits(['copied'])
 
 const SLIDER_TOLERANCE = 2
 const TIMER_WAIT_SECONDS = 5
-const CHALLENGE_VALIDITY_MS = 5 * 60 * 1000
 const PM_FRICTION_LOG_KEY_PREFIX = 'pm-positive-friction-log'
 const PM_CREDENTIAL_COPY_LOG_KEY_PREFIX = 'pm-study-credential-copy'
-const ROBOT_CHECK_TEXT = 'I am not a robot'
-const CHALLENGE_RESET_STORAGE_KEY = 'pm.challenge.order.resetAt'
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
 
 const appendLocalStudyEvent = (keyPrefix, sessionId, event) => {
@@ -196,17 +213,29 @@ const domainOptions = ref([])
 const currentDomainQuestion = ref('')
 const currentDomainAnswer = ref('')
 const currentTimerMessage = ref('')
-const robotConfirmed = ref(false)
+const currentPhraseTargetWords = ref([])
+const selectedPhraseWords = ref([])
+const phraseWordBank = ref([])
 const timerSecondsLeft = ref(0)
-const challengePlan = ref([])
-const challengePlanPosition = ref(0)
-const challengeResetToken = ref('')
-
 const pendingAction = ref(null)
+
+const {
+  challengePlan,
+  challengePlanPosition,
+  challengeValidUntilMs,
+  challengeGrantAccountKey,
+  ensureChallengePlan,
+  syncChallengePlanWithLogin,
+  shuffle,
+  randomInt,
+  TEXT_PROMPTS,
+  TIMER_MESSAGES,
+  PHRASE_CHALLENGES,
+  DOMAIN_QUESTIONS,
+} = useGlobalChallenge()
 const challengeStartedAtMs = ref(null)
 const actionRequestedAtMs = ref(null)
 const challengeAttemptCount = ref(0)
-const challengeValidUntilMs = ref(0)
 let timerIntervalId = null
 
 const isTimerConfirmDisabled = computed(
@@ -242,12 +271,25 @@ const startTimerChallenge = () => {
   }, 1000)
 }
 
-const hasActiveChallengeGrant = () => {
-  const now = Date.now()
-  if (challengeValidUntilMs.value > now) return true
+const getAccountGrantKey = () => {
+  return (
+    props.accountId ||
+    props.accountCredentialLinkKey ||
+    props.accountWebsite ||
+    props.account_name ||
+    ''
+  )
+}
 
-  if (challengeValidUntilMs.value > 0) {
-    challengeValidUntilMs.value = 0
+const hasActiveChallengeGrant = () => {
+  const currentAccountKey = getAccountGrantKey()
+
+  if (
+    challengeValidUntilMs.value > 0 &&
+    challengeGrantAccountKey.value !== '' &&
+    challengeGrantAccountKey.value === currentAccountKey
+  ) {
+    return true
   }
 
   return false
@@ -362,105 +404,40 @@ const saveChallengeEvent = (outcome) => {
   return durationSeconds
 }
 
-const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5)
-const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min
 const pickUnique = (arr, count) => shuffle(arr).slice(0, Math.min(count, arr.length))
 
-const TEXT_PROMPTS = [
-  'I am not being scammed',
-  'I verify the website before signing in',
-  'I will check the URL before entering my password',
-  'I only sign in on official websites',
-]
+const initPhraseChallenge = () => {
+  const fallbackWords = PHRASE_CHALLENGES[0] || ['Check', 'the', 'URL']
+  const sourceWords =
+    Array.isArray(currentPhraseTargetWords.value) && currentPhraseTargetWords.value.length > 0
+      ? currentPhraseTargetWords.value
+      : fallbackWords
 
-const TIMER_MESSAGES = [
-  'Cyberattacks often succeed when people act too quickly, so take a short pause before continuing.',
-  'Scammers create urgency to force mistakes. Pause, review, and only then continue.',
-]
-
-const DOMAIN_QUESTIONS = [
-  {
-    prompt:
-      'Attackers often use lookalike domains (typosquatting) in phishing messages. Select the official Google account domain:',
-    correct: 'accounts.google.com',
-    lookalikes: [
-      'account-google.com',
-      'accounts-google.com',
-      'acc0unts.google.com',
-      'accounts.g00gle.com',
-      'google.accounts.security-login.com',
-    ],
-  },
-  {
-    prompt:
-      'A fake email says your account is locked. Select the official Microsoft sign-in domain:',
-    correct: 'login.microsoftonline.com',
-    lookalikes: [
-      'login-microsoftonline.com',
-      'login.micros0ftonline.com',
-      'microsoftonline.verify-login.com',
-      'microsoft-online-login.com',
-      'secure.microsoftonIine.com',
-    ],
-  },
-  {
-    prompt: 'Select the official Apple ID sign-in domain:',
-    correct: 'appleid.apple.com',
-    lookalikes: [
-      'apple-id.apple.com.security-login.com',
-      'appleid-appple.com',
-      'appleid.apple-login.com',
-      'appleid.verify-account-login.com',
-      'appleld.apple.com',
-    ],
-  },
-]
-
-const ensureChallengePlan = () => {
-  if (challengePlanPosition.value < challengePlan.value.length) return
-
-  const text1 = TEXT_PROMPTS[0]
-  const text2 = TEXT_PROMPTS[1] || TEXT_PROMPTS[0]
-  const question1 = DOMAIN_QUESTIONS[0]
-  const question2 = DOMAIN_QUESTIONS[1] || DOMAIN_QUESTIONS[0]
-  const timer1 = TIMER_MESSAGES[0]
-  const timer2 = TIMER_MESSAGES[1] || TIMER_MESSAGES[0]
-
-  // Fixed 11-step order requested by user.
-  challengePlan.value = [
-    { type: 'slider' },
-    { type: 'text', prompt: text1 },
-    { type: 'domain', question: question1 },
-    { type: 'timer', message: timer1 },
-    { type: 'robot' },
-    { type: 'slider' },
-    { type: 'text', prompt: text2 },
-    { type: 'domain', question: question2 },
-    { type: 'timer', message: timer2 },
-    { type: 'robot' },
-  ]
-  challengePlanPosition.value = 0
+  selectedPhraseWords.value = []
+  phraseWordBank.value = shuffle([...sourceWords])
 }
 
-const getChallengeResetToken = () => {
-  if (typeof window === 'undefined') return ''
-  return window.localStorage.getItem(CHALLENGE_RESET_STORAGE_KEY) || ''
+const selectPhraseWord = (index) => {
+  if (index < 0 || index >= phraseWordBank.value.length) return
+  const [word] = phraseWordBank.value.splice(index, 1)
+  selectedPhraseWords.value.push(word)
 }
 
-const syncChallengePlanWithLogin = () => {
-  const nextToken = getChallengeResetToken()
+const undoPhraseWord = () => {
+  if (selectedPhraseWords.value.length === 0) return
+  const lastWord = selectedPhraseWords.value.pop()
+  phraseWordBank.value.push(lastWord)
+}
 
-  if (challengeResetToken.value === '') {
-    challengeResetToken.value = nextToken
-    return
-  }
+const clearPhraseSelection = () => {
+  const fallbackWords = PHRASE_CHALLENGES[0] || ['Check', 'the', 'URL']
+  const sourceWords =
+    Array.isArray(currentPhraseTargetWords.value) && currentPhraseTargetWords.value.length > 0
+      ? currentPhraseTargetWords.value
+      : fallbackWords
 
-  if (nextToken !== challengeResetToken.value) {
-    challengeResetToken.value = nextToken
-    challengePlan.value = []
-    challengePlanPosition.value = 0
-    challengeValidUntilMs.value = 0
-  }
+  selectedPhraseWords.value = []
+  phraseWordBank.value = shuffle([...sourceWords])
 }
 
 const buildDomainChallenge = (selectedQuestion) => {
@@ -480,14 +457,15 @@ const pickNextChallenge = () => {
 
   stopTimerChallenge()
   challengeType.value = planItem.type
-  challengePlanPosition.value += 1
   challengeInput.value = ''
   challengeError.value = ''
   challengeAttemptCount.value = 0
   sliderValue.value = 0
   selectedDomain.value = ''
   domainOptions.value = []
-  robotConfirmed.value = false
+  currentPhraseTargetWords.value = []
+  selectedPhraseWords.value = []
+  phraseWordBank.value = []
 
   if (challengeType.value === 'text') {
     currentTextPrompt.value = planItem.prompt || TEXT_PROMPTS[0]
@@ -498,6 +476,12 @@ const pickNextChallenge = () => {
     startTimerChallenge()
   } else if (challengeType.value === 'domain') {
     buildDomainChallenge(planItem.question)
+  } else if (challengeType.value === 'phrase') {
+    currentPhraseTargetWords.value =
+      Array.isArray(planItem.words) && planItem.words.length > 0
+        ? planItem.words
+        : PHRASE_CHALLENGES[0] || ['Check', 'the', 'URL']
+    initPhraseChallenge()
   }
 }
 
@@ -567,10 +551,12 @@ const requestSensitiveAction = async (action) => {
     return
   }
 
-  pendingAction.value = action
-  pickNextChallenge()
-  challengeStartedAtMs.value = Date.now()
-  showChallenge.value = true
+  if (!showChallenge.value) {
+    pendingAction.value = action
+    pickNextChallenge()
+    challengeStartedAtMs.value = Date.now()
+    showChallenge.value = true
+  }
 }
 
 const confirmChallenge = async () => {
@@ -591,23 +577,28 @@ const confirmChallenge = async () => {
       challengeError.value = `Please wait ${timerSecondsLeft.value} second(s) before continuing.`
       return
     }
-  } else if (challengeType.value === 'robot') {
-    if (!robotConfirmed.value) {
-      challengeError.value = 'Please confirm the checkbox to continue.'
+  } else if (challengeType.value === 'phrase') {
+    if (selectedPhraseWords.value.join(' ') !== currentPhraseTargetWords.value.join(' ')) {
+      challengeError.value = 'The phrase order is incorrect.'
       return
     }
-  } else {
+  } else if (challengeType.value === 'domain') {
     if (selectedDomain.value !== currentDomainAnswer.value) {
       challengeError.value = 'Incorrect domain selected.'
       return
     }
+  } else {
+    challengeError.value = 'Challenge type is invalid.'
+    return
   }
 
   showChallenge.value = false
   challengeError.value = ''
   stopTimerChallenge()
   const challengeDurationSeconds = saveChallengeEvent('completed')
-  challengeValidUntilMs.value = Date.now() + CHALLENGE_VALIDITY_MS
+  challengeValidUntilMs.value = Number.MAX_SAFE_INTEGER
+  challengeGrantAccountKey.value = getAccountGrantKey()
+  challengePlanPosition.value += 1
 
   const action = pendingAction.value
   pendingAction.value = null
@@ -616,7 +607,9 @@ const confirmChallenge = async () => {
   timerSecondsLeft.value = 0
   selectedDomain.value = ''
   domainOptions.value = []
-  robotConfirmed.value = false
+  currentPhraseTargetWords.value = []
+  selectedPhraseWords.value = []
+  phraseWordBank.value = []
 
   if (action) {
     const result = await runAction(action)
@@ -656,23 +649,18 @@ const cancelChallenge = () => {
   timerSecondsLeft.value = 0
   selectedDomain.value = ''
   domainOptions.value = []
-  robotConfirmed.value = false
+  currentPhraseTargetWords.value = []
+  selectedPhraseWords.value = []
+  phraseWordBank.value = []
   challengeAttemptCount.value = 0
   pendingAction.value = null
 }
 
 onBeforeUnmount(() => {
   stopTimerChallenge()
+  challengeValidUntilMs.value = 0
+  challengeGrantAccountKey.value = ''
 })
-
-// Challenge validity is bound to the currently viewed password entry.
-// Switching account context forces a new challenge even within 5 minutes.
-watch(
-  () => [props.accountId, props.accountCredentialLinkKey, props.accountWebsite],
-  () => {
-    challengeValidUntilMs.value = 0
-  },
-)
 </script>
 
 <style scoped>
@@ -832,18 +820,55 @@ watch(
   font-size: 1rem;
 }
 
-.robot-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-top: 1rem;
+.phrase-selected {
+  margin-top: 0.8rem;
+  padding: 0.65rem;
+  min-height: 2.5rem;
+  border: 1px dashed #9aa3b2;
+  border-radius: 6px;
+  background: #f7f9fc;
   font-family: Inter;
   font-size: 0.95rem;
 }
 
-.robot-checkbox input[type='checkbox'] {
-  width: 1.05rem;
-  height: 1.05rem;
+.phrase-placeholder {
+  color: #7a7a7a;
+}
+
+.phrase-bank {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+.phrase-word {
+  border: 1px solid #c3d4ee;
+  border-radius: 999px;
+  background: #edf4ff;
+  color: #1f3f6f;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+  font-family: Inter;
+  font-size: 0.92rem;
+}
+
+.phrase-word:hover {
+  background: #dfeefe;
+}
+
+.phrase-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.btn-secondary {
+  border: 1px solid #cdd3de;
+  border-radius: 6px;
+  background: #f6f7f9;
+  color: #2b2b2b;
+  padding: 0.35rem 0.65rem;
   cursor: pointer;
 }
 
